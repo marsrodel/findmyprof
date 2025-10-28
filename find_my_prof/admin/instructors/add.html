@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin • Add Instructor</title>
+  <style>
+    :root{--text:#0f172a;--muted:#475569;--border:rgba(15,23,42,.12);--bg:#f1f5f9;--card:#fff;--accent:#1f2937}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:var(--bg)}
+    .container{max-width:1100px;margin:0 auto;padding:16px}
+    .top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}
+    .title{font-size:22px;font-weight:800}
+    .back{font-size:13px;color:var(--muted);text-decoration:underline}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,.08);padding:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .col{flex:1;min-width:240px}
+    .field{display:grid;gap:6px;margin-bottom:10px}
+    .label{font-size:13px;color:var(--muted)}
+    .input{height:40px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
+    .input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,41,55,.15)}
+    .btn{height:40px;padding:0 14px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    .note{color:var(--muted);font-size:13px;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <div class="title">Add Instructor</div>
+      <a class="back" href="../instructors/index.html">← Back</a>
+    </div>
+
+    <section class="card">
+      <form action="add.php" method="post">
+        <div class="row">
+          <div class="col"><div class="field"><span class="label">Full Name</span><input class="input" type="text" name="name" placeholder="e.g., Juan Dela Cruz" required /></div></div>
+          <div class="col"><div class="field"><span class="label">Email</span><input class="input" type="email" name="email" placeholder="name@csucc.edu.ph" required /></div></div>
+          <div class="col"><div class="field"><span class="label">Password</span><input class="input" type="password" name="password" placeholder="Create password" required /></div></div>
+        </div>
+        <div class="row">
+          <div class="col"><div class="field"><span class="label">Department</span>
+          <select class="input" name="department" required>
+            <option value="">— Select Department —</option>
+            <option value="CBA">CBA</option>
+            <option value="CEIT">CEIT</option>
+            <option value="CTHM">CTHM</option>
+            <option value="CITTE">CITTE</option>
+            <option value="DLHS">DLHS</option>
+          </select>
+        </div></div>
+          <div class="col"><div class="field"><span class="label">Role</span>
+            <select class="input" name="role" required>
+              <option value="faculty" selected>Faculty</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div></div>
+          <div class="col"><div class="field"><span class="label">Contact (optional)</span><input class="input" type="text" name="contact" placeholder="e.g., 09xx xxx xxxx" /></div></div>
+        </div>
+        <button class="btn" type="submit">Create Instructor Account</button>
+      </form>
+      <div class="note">This form saves a faculty user account.</div>
+    </section>
+  </div>
+</body>
+</html>

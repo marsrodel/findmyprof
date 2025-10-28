@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin • Add Buildings & Rooms</title>
+  <style>
+    :root{--text:#0f172a;--muted:#475569;--border:rgba(15,23,42,.12);--bg:#f1f5f9;--card:#fff;--accent:#1f2937}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:var(--bg)}
+    .container{max-width:1100px;margin:0 auto;padding:16px}
+    .top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}
+    .title{font-size:22px;font-weight:800}
+    .back{font-size:13px;color:var(--muted);text-decoration:underline}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,.08);padding:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .col{flex:1;min-width:240px}
+    .field{display:grid;gap:6px;margin-bottom:10px}
+    .label{font-size:13px;color:var(--muted)}
+    .input,textarea{height:40px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
+    textarea{height:84px;resize:vertical}
+    .input:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,41,55,.15)}
+    .btn{height:40px;padding:0 14px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    .btn.light{background:#e2e8f0;color:#0f172a}
+    .list{display:grid;gap:8px;margin-top:8px}
+    .item{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff}
+    .qr{width:96px;height:96px;border:1px solid var(--border);border-radius:8px;display:grid;place-items:center;font-size:12px;color:var(--muted);background:#f8fafc}
+  </style>
+  <script>
+    function addRoom(){
+      const wrap=document.getElementById('roomsWrap');
+      const row=document.createElement('div');
+      row.className='item';
+      row.innerHTML=`
+        <div class="row">
+          <div class="col"><div class="field"><span class="label">Room Name</span><input class="input" type="text" name="rooms[name][]" placeholder="e.g., ACAD" /></div></div>
+          <div class="col"><div class="field"><span class="label">Room Number</span><input class="input" type="text" name="rooms[number][]" placeholder="e.g., 123" /></div></div>
+        </div>`;
+      wrap.appendChild(row);
+    }
+    window.addEventListener('DOMContentLoaded',()=>{ addRoom(); });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <div class="title">Add Buildings & Rooms</div>
+      <a class="back" href="admin.html">← Back to Dashboard</a>
+    </div>
+
+    <section class="card">
+      <form action="buildings_save.php" method="post">
+        <div class="row">
+          <div class="col"><div class="field"><span class="label">Building Name</span><input class="input" type="text" name="building_name" placeholder="e.g., College of Computing Building" required /></div></div>
+          <div class="col"><div class="field"><span class="label">Building Code</span><input class="input" type="text" name="building_code" placeholder="e.g., COC" required /></div></div>
+        </div>
+        <div class="field"><span class="label">Description (optional)</span><textarea name="description" placeholder="Short description"></textarea></div>
+
+        <h3 style="margin:8px 0;font-size:16px">Rooms</h3>
+        <div id="roomsWrap" class="list"></div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn light" type="button" onclick="addRoom()">+ Add Room</button>
+          <button class="btn" type="submit">Save Building</button>
+        </div>
+        <p class="back" style="margin-top:8px">On save, QR codes will be generated for each room.</p>
+      </form>
+    </section>
+  </div>
+</body>
+</html>

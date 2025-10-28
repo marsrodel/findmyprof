@@ -1,0 +1,159 @@
+/* FindMyProf - Login page styles (no framework) */
+
+:root {
+  --mint: rgba(126, 199, 170, 0.9); /* navbar/footer tint */
+  --mint-soft: rgba(126, 199, 170, 0.7);
+  --text: #111;
+  --muted: #6b7280;
+  --card-bg: #ffffff;
+  --input-bg: #ffffff;
+  --input-border: #e5e7eb;
+  --btn-bg: #2c2c2c;
+  --btn-bg-hover: #1f1f1f;
+  --shadow: 0 10px 20px rgba(0,0,0,0.12), 0 6px 6px rgba(0,0,0,0.08);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+  color: var(--text);
+  background: #f3f4f6; /* background photo ignored per instruction */
+}
+
+/* Navbar */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--mint);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.nav-content {
+  height: 64px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-logo {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: #e5f5ee;
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 700; color: #25634f;
+  border: 2px solid #c8eadc;
+}
+.brand-name { font-weight: 700; font-size: 18px; color: #134e4a; }
+
+/* Layout */
+.page { min-height: calc(100vh - 64px - 44px); }
+.hero {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 32px 20px;
+  display: grid;
+  grid-template-columns: 1fr 480px;
+  gap: 40px;
+  align-items: center;
+}
+
+/* Left emblem placeholder */
+.left-graphic { display: flex; justify-content: center; }
+.crest-placeholder {
+  width: 260px; height: 260px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #1b8d47, #0e5a2c);
+  color: #fff; font-weight: 800; letter-spacing: 2px;
+  display: grid; place-items: center;
+  box-shadow: var(--shadow);
+}
+
+/* Login card */
+.login-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 28px;
+}
+.card-title {
+  margin: 0 0 18px 0;
+  text-align: center;
+  font-size: 26px;
+  letter-spacing: 1px;
+}
+
+.login-form { display: grid; gap: 14px; }
+.field { display: grid; gap: 6px; }
+.label { font-size: 13px; color: #111; }
+
+input[type="email"], input[type="password"] {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  outline: none;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+input[type="email"]:focus, input[type="password"]:focus {
+  border-color: #9ccfb8;
+  box-shadow: 0 0 0 3px rgba(126,199,170,0.25);
+}
+
+.btn.primary {
+  margin-top: 6px;
+  width: 100%;
+  height: 42px;
+  border: none;
+  border-radius: 8px;
+  background: var(--btn-bg);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, transform .02s ease;
+}
+.btn.primary:active { transform: translateY(1px); }
+.btn.primary:hover { background: var(--btn-bg-hover); }
+
+.links {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.link { color: #111; text-decoration: underline; font-size: 14px; }
+.link.right { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.link.right:hover { text-decoration: underline; }
+.guest-icon { filter: grayscale(100%); }
+
+/* Footer */
+.footer {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  background: var(--mint-soft);
+  color: #fff;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+.footer-content {
+  height: 44px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 980px) {
+  .hero { grid-template-columns: 1fr; gap: 24px; }
+  .left-graphic { display: none; }
+}

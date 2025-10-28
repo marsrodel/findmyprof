@@ -1,0 +1,360 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Host: 127.0.0.1
+-- Generation Time: Oct 13, 2025 at 06:53 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+00:00";
+
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!40101 SET NAMES utf8mb4 */;
+
+--
+-- Database: `find_my_prof`
+--
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `buildings`
+--
+
+CREATE TABLE `buildings` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `code` varchar(30) NOT NULL,
+  `name` varchar(180) NOT NULL,
+  `description` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `buildings`
+--
+
+INSERT INTO `buildings` (`id`, `code`, `name`, `description`, `created_at`, `updated_at`) VALUES
+(2, 'ACAD', 'Academic Building', NULL, '2025-10-13 04:04:49', '2025-10-13 04:04:49');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `instructor_logs`
+--
+
+CREATE TABLE `instructor_logs` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `faculty_user_id` bigint(20) UNSIGNED NOT NULL,
+  `action` enum('status_update','checkin','checkout','schedule_auto') NOT NULL,
+  `status` enum('available','in_class','meeting','break','out','dnd') DEFAULT NULL,
+  `room_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `note` varchar(255) DEFAULT NULL,
+  `source` enum('manual','qr','schedule') NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `instructor_logs`
+--
+
+INSERT INTO `instructor_logs` (`id`, `faculty_user_id`, `action`, `status`, `room_id`, `note`, `source`, `created_at`) VALUES
+(1, 2, 'checkin', 'available', 6, NULL, 'qr', '2025-10-13 04:41:41');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `presence`
+--
+
+CREATE TABLE `presence` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `faculty_user_id` bigint(20) UNSIGNED NOT NULL,
+  `room_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `status` enum('available','in_class','meeting','break','out','dnd') NOT NULL,
+  `note` varchar(255) DEFAULT NULL,
+  `source` enum('manual','qr','schedule') NOT NULL DEFAULT 'manual',
+  `expires_at` datetime DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `presence`
+--
+
+INSERT INTO `presence` (`id`, `faculty_user_id`, `room_id`, `status`, `note`, `source`, `expires_at`, `created_at`, `updated_at`) VALUES
+(1, 2, 6, 'available', NULL, 'qr', NULL, '2025-10-13 04:41:41', '2025-10-13 04:41:41');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `rooms`
+--
+
+CREATE TABLE `rooms` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `building_id` bigint(20) UNSIGNED NOT NULL,
+  `room_number` varchar(60) NOT NULL,
+  `room_name` varchar(180) NOT NULL,
+  `qr_payload` varchar(255) NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `rooms`
+--
+
+INSERT INTO `rooms` (`id`, `building_id`, `room_number`, `room_name`, `qr_payload`, `created_at`, `updated_at`) VALUES
+(4, 2, '101', 'ACAD', '{\"building\":\"Academic Building\",\"room_name\":\"ACAD\",\"room_number\":\"101\",\"rid\":4}', '2025-10-13 04:04:49', '2025-10-13 04:04:49'),
+(5, 2, '102', 'ACAD', '{\"building\":\"Academic Building\",\"room_name\":\"ACAD\",\"room_number\":\"102\",\"rid\":5}', '2025-10-13 04:04:51', '2025-10-13 04:04:51'),
+(6, 2, '103', 'ACAD', '{\"building\":\"Academic Building\",\"room_name\":\"ACAD\",\"room_number\":\"103\",\"rid\":6}', '2025-10-13 04:04:53', '2025-10-13 04:04:53');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `room_logs`
+--
+
+CREATE TABLE `room_logs` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `room_id` bigint(20) UNSIGNED NOT NULL,
+  `faculty_user_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `action` enum('checkin','checkout') NOT NULL,
+  `note` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `room_logs`
+--
+
+INSERT INTO `room_logs` (`id`, `room_id`, `faculty_user_id`, `action`, `note`, `created_at`) VALUES
+(1, 6, 2, 'checkin', NULL, '2025-10-13 04:41:41');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `schedules`
+--
+
+CREATE TABLE `schedules` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `faculty_user_id` bigint(20) UNSIGNED NOT NULL,
+  `course_code` varchar(40) DEFAULT NULL,
+  `room_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `day_of_week` tinyint(3) UNSIGNED NOT NULL,
+  `start_time` time NOT NULL,
+  `end_time` time NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `name` varchar(150) NOT NULL,
+  `email` varchar(190) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `role` enum('admin','faculty') NOT NULL DEFAULT 'faculty',
+  `department` enum('CBA','CEIT','CTHM','CITTE','DLHS') DEFAULT NULL,
+  `contact` varchar(50) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`id`, `name`, `email`, `password`, `role`, `department`, `contact`, `created_at`, `updated_at`) VALUES
+(1, 'Admin', 'admin@csucc.edu.ph', '1234', 'admin', NULL, NULL, '2025-10-13 03:17:31', '2025-10-13 03:17:31'),
+(2, 'Rodel James Maraon', 'rodeljames.maraon@csucc.edu.ph', '$2y$10$YmJIMuYGO7hEhmGa4vgb2u97OM43SSaMFn3Nm00Fs5E42iZc7.Lb6', 'faculty', 'CEIT', '', '2025-10-13 03:27:57', '2025-10-13 03:39:03');
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_current_presence`
+-- (See below for the actual view)
+--
+CREATE TABLE `v_current_presence` (
+`id` bigint(20) unsigned
+,`faculty_user_id` bigint(20) unsigned
+,`room_id` bigint(20) unsigned
+,`status` enum('available','in_class','meeting','break','out','dnd')
+,`note` varchar(255)
+,`source` enum('manual','qr','schedule')
+,`expires_at` datetime
+,`created_at` timestamp
+,`updated_at` timestamp
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_current_presence`
+--
+DROP TABLE IF EXISTS `v_current_presence`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `v_current_presence`  AS SELECT `p1`.`id` AS `id`, `p1`.`faculty_user_id` AS `faculty_user_id`, `p1`.`room_id` AS `room_id`, `p1`.`status` AS `status`, `p1`.`note` AS `note`, `p1`.`source` AS `source`, `p1`.`expires_at` AS `expires_at`, `p1`.`created_at` AS `created_at`, `p1`.`updated_at` AS `updated_at` FROM (`presence` `p1` join (select `presence`.`faculty_user_id` AS `faculty_user_id`,max(`presence`.`created_at`) AS `max_created` from `presence` group by `presence`.`faculty_user_id`) `latest` on(`latest`.`faculty_user_id` = `p1`.`faculty_user_id` and `latest`.`max_created` = `p1`.`created_at`)) ;
+
+--
+-- Indexes for dumped tables
+--
+
+--
+-- Indexes for table `buildings`
+--
+ALTER TABLE `buildings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_buildings_code` (`code`);
+
+--
+-- Indexes for table `instructor_logs`
+--
+ALTER TABLE `instructor_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_il_room` (`room_id`),
+  ADD KEY `idx_il_user_time` (`faculty_user_id`,`created_at`);
+
+--
+-- Indexes for table `presence`
+--
+ALTER TABLE `presence`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_presence_user_created` (`faculty_user_id`,`created_at`),
+  ADD KEY `idx_presence_room_created` (`room_id`,`created_at`);
+
+--
+-- Indexes for table `rooms`
+--
+ALTER TABLE `rooms`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `uk_room_in_building` (`building_id`,`room_number`),
+  ADD UNIQUE KEY `uk_rooms_qr_payload` (`qr_payload`);
+
+--
+-- Indexes for table `room_logs`
+--
+ALTER TABLE `room_logs`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_rl_user` (`faculty_user_id`),
+  ADD KEY `idx_rl_room_time` (`room_id`,`created_at`);
+
+--
+-- Indexes for table `schedules`
+--
+ALTER TABLE `schedules`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_sched_user_day` (`faculty_user_id`,`day_of_week`),
+  ADD KEY `idx_sched_room_day` (`room_id`,`day_of_week`);
+
+--
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_users_role` (`role`),
+  ADD KEY `idx_users_department` (`department`);
+
+--
+-- AUTO_INCREMENT for dumped tables
+--
+
+--
+-- AUTO_INCREMENT for table `buildings`
+--
+ALTER TABLE `buildings`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `instructor_logs`
+--
+ALTER TABLE `instructor_logs`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `presence`
+--
+ALTER TABLE `presence`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `rooms`
+--
+ALTER TABLE `rooms`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `room_logs`
+--
+ALTER TABLE `room_logs`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `schedules`
+--
+ALTER TABLE `schedules`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `instructor_logs`
+--
+ALTER TABLE `instructor_logs`
+  ADD CONSTRAINT `fk_il_room` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_il_user` FOREIGN KEY (`faculty_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `presence`
+--
+ALTER TABLE `presence`
+  ADD CONSTRAINT `fk_presence_room` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_presence_user` FOREIGN KEY (`faculty_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `rooms`
+--
+ALTER TABLE `rooms`
+  ADD CONSTRAINT `fk_rooms_building` FOREIGN KEY (`building_id`) REFERENCES `buildings` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `room_logs`
+--
+ALTER TABLE `room_logs`
+  ADD CONSTRAINT `fk_rl_room` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_rl_user` FOREIGN KEY (`faculty_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `schedules`
+--
+ALTER TABLE `schedules`
+  ADD CONSTRAINT `fk_sched_room` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_sched_user` FOREIGN KEY (`faculty_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+COMMIT;
+
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;

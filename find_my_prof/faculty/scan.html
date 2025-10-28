@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faculty • Scan QR</title>
+  <style>
+    :root{--text:#0f172a;--muted:#475569;--border:rgba(15,23,42,.12);--bg:#f1f5f9;--card:#fff;--accent:#1f2937}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:var(--bg)}
+    .container{max-width:900px;margin:0 auto;padding:16px}
+    .top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}
+    .title{font-size:22px;font-weight:800}
+    .back{font-size:13px;color:var(--muted);text-decoration:underline}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,.08);padding:16px}
+    .scanbox{display:grid;place-items:center;height:320px;border:2px dashed var(--border);border-radius:12px;background:#ffffff}
+    .note{color:var(--muted);font-size:13px;margin-top:8px}
+    .row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+    .btn{height:40px;padding:0 14px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    input[type=file]{border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+  </style>
+  <script src="https://unpkg.com/html5-qrcode" defer></script>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <div class="title">Scan QR</div>
+      <a class="back" href="index.html">← Back</a>
+    </div>
+
+    <section class="card">
+      <div id="preview" class="scanbox"><span class="note">Camera Preview</span></div>
+      <div class="row">
+        <select id="cameraSelect" class="input" style="min-width:220px"></select>
+        <button id="startBtn" class="btn" type="button">Start Camera</button>
+        <button id="stopBtn" class="btn" type="button" style="background:#6b7280">Stop</button>
+        <input id="fileInput" type="file" accept="image/*" />
+      </div>
+      <p id="status" class="note">Grant camera permission to start scanning, or upload a QR image.</p>
+    </section>
+  </div>
+  <script>
+    let html5QrCode = null;
+    const preview = document.getElementById('preview');
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const fileInput = document.getElementById('fileInput');
+    const cameraSelect = document.getElementById('cameraSelect');
+
+    function onScanSuccess(decodedText) {
+      try {
+        // Redirect to confirmation handler with the raw payload
+        const url = 'checkin_qr.php?data=' + encodeURIComponent(decodedText);
+        window.location.href = url;
+      } catch (e) {
+        statusEl.textContent = 'Scan error: ' + e.message;
+      }
+    }
+    function onScanFailure(error) {
+      // Throttle logs
+    }
+
+    async function populateDevices() {
+      cameraSelect.innerHTML = '';
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (!devices || devices.length === 0) {
+          const opt = document.createElement('option');
+          opt.text = 'No camera found';
+          cameraSelect.add(opt);
+          return [];
+        }
+        devices.forEach((d,i)=>{
+          const opt = document.createElement('option');
+          opt.value = d.id;
+          opt.text = d.label || ('Camera ' + (i+1));
+          // Prefer back camera as default
+          if (/back|rear/i.test(d.label)) opt.selected = true;
+          cameraSelect.add(opt);
+        });
+        return devices;
+      } catch (e) {
+        statusEl.textContent = 'Cannot enumerate cameras: ' + e.message;
+        return [];
+      }
+    }
+
+    async function ensurePermissionOnce() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Immediately stop tracks; html5-qrcode will open later
+        stream.getTracks().forEach(t=>t.stop());
+      } catch (e) {
+        throw e;
+      }
+    }
+
+    async function startCamera() {
+      if (!window.Html5Qrcode) {
+        statusEl.textContent = 'Scanner library not loaded yet. Please wait and try again.';
+        return;
+      }
+      try {
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode('preview');
+        }
+        // Ask for permission explicitly to reveal device labels on some browsers
+        try { await ensurePermissionOnce(); } catch (e) {}
+
+        let started = false;
+        try {
+          const devices = await populateDevices();
+          if (devices && devices.length > 0) {
+            const selected = cameraSelect.value || devices[0].id;
+            await html5QrCode.start(
+              selected,
+              { fps: 10, qrbox: 250 },
+              onScanSuccess,
+              onScanFailure
+            );
+            started = true;
+          }
+        } catch (e) {
+          // ignore and try facingMode fallback
+        }
+
+        if (!started) {
+          // Fallback: request environment camera without deviceId
+          await html5QrCode.start(
+            { facingMode: { exact: 'environment' } },
+            { fps: 10, qrbox: 250 },
+            onScanSuccess,
+            onScanFailure
+          ).catch(async () => {
+            // Last fallback: any available camera
+            await html5QrCode.start(
+              { facingMode: 'environment' },
+              { fps: 10, qrbox: 250 },
+              onScanSuccess,
+              onScanFailure
+            );
+          });
+        }
+        statusEl.textContent = 'Scanning...';
+      } catch (e) {
+        statusEl.textContent = 'Unable to start camera: ' + e.message + '. Try using the file upload.';
+      }
+    }
+
+    async function stopCamera() {
+      try {
+        if (html5QrCode && html5QrCode.isScanning) {
+          await html5QrCode.stop();
+          await html5QrCode.clear();
+          statusEl.textContent = 'Camera stopped.';
+        }
+      } catch (e) {
+        statusEl.textContent = 'Error stopping camera: ' + e.message;
+      }
+    }
+
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+
+    // Populate device list once the library loads
+    window.addEventListener('load', async () => {
+      if (window.Html5Qrcode) {
+        await populateDevices();
+      }
+    });
+
+    fileInput.addEventListener('change', async (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      if (!window.Html5Qrcode) { statusEl.textContent = 'Scanner library not ready.'; return; }
+      try {
+        // Use a temporary scanner instance for file
+        const tmpId = 'tmp-qr-reader';
+        const tmpDiv = document.createElement('div');
+        tmpDiv.id = tmpId;
+        tmpDiv.style.display = 'none';
+        document.body.appendChild(tmpDiv);
+        const scanner = new Html5Qrcode(tmpId);
+        const result = await scanner.scanFile(f, true);
+        scanner.clear();
+        tmpDiv.remove();
+        onScanSuccess(result);
+      } catch (e) {
+        statusEl.textContent = 'Failed to read QR from image: ' + e.message;
+      }
+    });
+  </script>
+</body>
+</html>

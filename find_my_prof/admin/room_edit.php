@@ -1,0 +1,60 @@
+<?php
+require_once __DIR__ . '/../includes/auth.php';
+require_role('admin');
+require_once __DIR__ . '/../includes/db.php';
+
+$id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+if ($id <= 0) { header('Location: details.php'); exit; }
+
+$stmt = $pdo->prepare('SELECT r.*, b.name AS building_name FROM rooms r JOIN buildings b ON b.id=r.building_id WHERE r.id = ? LIMIT 1');
+$stmt->execute([$id]);
+$room = $stmt->fetch();
+if (!$room) { header('Location: details.php'); exit; }
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin • Edit Room</title>
+  <style>
+    :root{--text:#0f172a;--muted:#475569;--border:rgba(15,23,42,.12);--bg:#f1f5f9;--card:#fff;--accent:#1f2937}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:var(--bg)}
+    .container{max-width:900px;margin:0 auto;padding:16px}
+    .top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}
+    .title{font-size:22px;font-weight:800}
+    .back{font-size:13px;color:var(--muted);text-decoration:underline}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,.08);padding:16px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .col{flex:1;min-width:240px}
+    .field{display:grid;gap:6px;margin-bottom:10px}
+    .label{font-size:13px;color:var(--muted)}
+    .input{height:40px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
+    .btn{height:40px;padding:0 14px;border-radius:8px;border:0;background:#1f2937;color:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="top">
+      <div class="title">Edit Room (<?= htmlspecialchars($room['building_name']) ?>)</div>
+      <a class="back" href="building_edit.php?id=<?= (int)$room['building_id'] ?>">← Back to Building</a>
+    </div>
+
+    <section class="card">
+      <form action="room_update.php" method="post">
+        <input type="hidden" name="id" value="<?= (int)$room['id'] ?>" />
+        <div class="row">
+          <div class="col"><div class="field"><span class="label">Room Name</span>
+            <input class="input" type="text" name="room_name" value="<?= htmlspecialchars($room['room_name']) ?>" required />
+          </div></div>
+          <div class="col"><div class="field"><span class="label">Room Number</span>
+            <input class="input" type="text" name="room_number" value="<?= htmlspecialchars($room['room_number']) ?>" />
+          </div></div>
+        </div>
+        <button class="btn" type="submit">Save Room</button>
+      </form>
+    </section>
+  </div>
+</body>
+</html>

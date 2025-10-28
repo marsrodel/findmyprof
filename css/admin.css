@@ -1,0 +1,151 @@
+/* FindMyProf - Admin Dashboard (no framework) */
+
+:root{
+  --green: #0f6f0f;
+  --green-dark: #0b5b0c;
+  --mint: #bce7cf;
+  --bg: #eeeeee;
+  --panel: #ffffff;
+  --border: #c7c7c7;
+  --text: #1a1a1a;
+  --muted: #6b7280;
+  --shadow: 0 10px 20px rgba(0,0,0,.10);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);color:var(--text)}
+
+/* Top bar */
+.topbar{background:var(--green); color:#fff; border-bottom:2px solid #0a460a}
+.topbar-inner{height:64px; max-width:1300px; margin:0 auto; padding:0 20px; display:flex; align-items:center; justify-content:space-between}
+.brand{display:flex; align-items:center; gap:10px}
+.brand-mark{width:36px;height:36px;border-radius:50%;background:#e5f5ee;display:grid;place-items:center;font-weight:800;color:#095d22;border:2px solid #c8eadc}
+.brand-name{font-weight:800}
+.page-title{margin:0; letter-spacing:2px}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:8px;text-decoration:none;border:1px solid rgba(0,0,0,.15);background:#2f2f2f;color:#fff}
+.btn.ghost{background:#363636}
+.btn.add-qr{background:#444;}
+
+/* Layout */
+.layout{max-width:1300px;margin:0 auto;padding:16px;display:grid;grid-template-columns:220px 1fr;gap:16px}
+
+/* Sidebar */
+.sidebar{background:#e6f2ea;border:1px solid var(--border);box-shadow:var(--shadow);padding:16px}
+.avatar{width:72px;height:72px;border-radius:50%;background:#d4d4d4;display:grid;place-items:center;font-weight:800;margin:0 auto 12px}
+.menu{display:grid;gap:10px}
+.menu .item{padding:10px 12px;border-radius:6px;color:#0a461e;text-decoration:none;font-weight:700}
+.menu .item.active{color:#d22;background:#eaf7f0}
+
+/* =====================================
+   Admin: Content Area (shared)
+   ===================================== */
+.content{display:grid;gap:16px}
+.content-head{display:flex;align-items:center;justify-content:space-between}
+.welcome{margin:0}
+
+.grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);border-radius:10px;padding:16px}
+.panel-head h3{margin:0 0 12px 0}
+
+/* =====================================
+   Admin: Toolbar (search + filters)
+   used by executives/instructors/staff
+   ===================================== */
+.toolbar{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;margin-bottom:12px}
+.select-wrap{position:relative}
+.select-wrap select{appearance:none;-webkit-appearance:none;-moz-appearance:none;height:40px;border-radius:8px;padding:0 36px 0 12px;min-width:210px;border:1px solid #ddd;background:#fff;color:#333;outline:none}
+.select-wrap .chev{position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:#666}
+
+/* Search box */
+.search-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:12px}
+.search-input{height:40px;border-radius:20px;border:1px solid #ddd;padding:0 14px;background:#efedf4}
+.search-btn{background:#2f2f2f;color:#fff;border:1px solid rgba(0,0,0,.15)}
+
+/* =====================================
+   Admin: Dashboard Lists (showcase only)
+   ===================================== */
+.results{min-height:420px;background:#f7f7f7;border-radius:10px;border:1px solid var(--border)}
+.buildings{min-height:420px;background:#f7f7f7;border-radius:10px;border:1px solid var(--border)}
+
+/* =====================================
+   Admin: Tables (shared)
+   ===================================== */
+.table{width:100%;border:1px solid var(--border);background:#fff;display:grid;grid-template-rows:auto 1fr;overflow:hidden}
+.thead{display:grid;grid-auto-flow:column}
+.th{background:var(--green-dark);color:#fff;font-weight:700;font-size:13px;letter-spacing:.3px;padding:10px 12px;border-right:1px solid rgba(255,255,255,.15)}
+.th:last-child{border-right:none}
+.tbody{min-height:420px}
+
+/* =====================================
+   Admin: Executives table columns
+   ===================================== */
+.exec-table .thead{grid-template-columns: 1.2fr 1.2fr 1fr 140px 120px}
+/* Body rows should match header columns */
+.exec-table .tr{display:grid;grid-template-columns: 1.2fr 1.2fr 1fr 140px 120px}
+.exec-table .td{padding:10px 12px;border-bottom:1px solid #eee}
+.exec-table .tr:last-child .td{border-bottom:none}
+.btn.small{padding:6px 10px;font-size:12px;border-radius:6px}
+
+/* =====================================
+   Admin: Staff table columns
+   ===================================== */
+.staff-table .thead{grid-template-columns: 1.2fr 1.2fr 1fr 140px 120px}
+.staff-table .tr{display:grid;grid-template-columns: 1.2fr 1.2fr 1fr 140px 120px}
+.staff-table .td{padding:10px 12px;border-bottom:1px solid #eee}
+.staff-table .tr:last-child .td{border-bottom:none}
+
+/* =====================================
+   Admin: Buildings page
+   ===================================== */
+.section-title{margin: 0 0 10px 4px; font-weight: 800; color: #1a1a1a}
+.buildings-grid{display:grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 16px; align-items: start}
+.subpanel{background:#e3eee7; border:1px solid var(--border); border-radius:12px; padding:14px}
+.subpanel .sub-head{font-weight:800; color:#1a1a1a; margin-bottom:10px}
+.list-box{min-height:420px; background:#edf3ef; border:1px solid #d9e2db; border-radius:12px; padding:12px; overflow: auto}
+.qr-panel{display:grid; grid-template-columns: 220px 1fr; gap: 16px; align-items:start}
+.qr-box{width:220px; height:220px; border:2px dashed #333; display:grid; place-items:center; background:#fff; border-radius:6px}
+.qr-meta{font-size:14px; color:#1a1a1a}
+.qr-meta .meta{margin:8px 0;}
+.qr-actions{display:grid; gap:8px; font-size:x-small;}
+.btn.secondary{background:#6d5cae; color:#fff; height: 40px; border-radius:20px; padding:0 16px; display:inline-flex; align-items:center; gap:10px}
+.btn.secondary::before{content:""; width:18px; height:18px; border-radius:50%; background:#3e2f73; box-shadow:inset 0 0 0 2px #fff}
+
+/* =====================================
+   Admin: Optional pill rows for lists
+   ===================================== */
+.rooms-list .pill,
+.buildings-list .pill{height:44px; border-radius:22px; background:#dce5de; border:1px solid #cfd8d1; display:flex; align-items:center; justify-content:space-between; padding:0 12px; box-shadow: 0 1px 0 rgba(0,0,0,.06) inset; margin-bottom:10px}
+.pill .name{font-weight:700}
+.pill .action{color:#333; text-decoration:underline; font-weight:700}
+
+/* Footer */
+.footer{background:var(--mint);margin-top:16px}
+.footer-inner{height:44px;max-width:1300px;margin:0 auto;display:flex;align-items:center;justify-content:center;font-weight:600}
+
+/* =====================================
+   Admin: Forms (Add Building)
+   ===================================== */
+.form-section{background:#e3eee7;border:1px solid var(--border);border-radius:12px;padding:16px}
+.form-head h3{margin:0 0 8px 0;border-bottom:3px solid #0b5b0c;padding-bottom:8px}
+.form-body{display:grid;gap:12px}
+.field label{display:grid;gap:6px;font-size:12px;font-weight:800;color:#1a1a1a}
+.field input[type="text"], .field input[type="password"], .field input[type="file"], .field textarea{width:100%;border:1px solid #ddd;border-radius:6px;padding:10px;background:#fff;outline:none}
+.field.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.field textarea{resize:vertical}
+.form-actions{display:flex; align-items:center; justify-content:space-between; margin-top:8px}
+.muted-note{color:#6b7280; font-size:12px}
+
+/* =====================================
+   Admin: Logs page
+   ===================================== */
+.log-section{display:grid; gap:18px}
+.log-group{background:#e3eee7; border:1px solid var(--border); border-radius:12px; padding:16px}
+.log-group .group-title{margin:0 0 8px 0; font-weight:800; color:#1a1a1a}
+.log-panel{background:#f0f4f1; border:1px solid #d9e2db; border-radius:10px; padding:12px}
+.logs-table .thead{grid-template-columns: 180px 1.2fr 140px 120px 160px 120px}
+/* Align admin logs rows with headers and keep compact height */
+.logs-table .tbody{display:grid;grid-auto-rows:56px}
+.logs-table .row{display:grid;grid-template-columns: 180px 1.2fr 140px 120px 160px 120px;align-items:center;border-bottom:1px solid #e5e7eb}
+.logs-table .row:last-child{border-bottom:none}
+.logs-table .td{padding:10px 12px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px}

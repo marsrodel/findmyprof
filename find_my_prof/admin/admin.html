@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel</title>
+  <style>
+    :root{
+      --text:#0f172a;--muted:#475569;--border:rgba(15,23,42,.12);--bg:#f1f5f9;--card:#fff;--accent:#1f2937
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;color:var(--text);background:var(--bg)}
+    .container{max-width:1200px;margin:0 auto;padding:16px}
+    .top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}
+    .title{font-size:22px;font-weight:800}
+    .subtitle{font-size:13px;color:var(--muted)}
+    /* Dashboard buttons */
+    .grid-buttons{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:12px}
+    @media (max-width:1000px){.grid-buttons{grid-template-columns:repeat(3,1fr)}}
+    @media (max-width:640px){.grid-buttons{grid-template-columns:repeat(2,1fr)}}
+    .bigbtn{display:flex;align-items:center;justify-content:center;text-align:center;min-height:56px;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;color:#0f172a;text-decoration:none;box-shadow:0 6px 18px rgba(15,23,42,.06)}
+    .bigbtn:hover{background:#111827;color:#fff;border-color:#111827}
+
+    /* Tabs */
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+    .tab{border:1px solid var(--border);background:#fff;padding:8px 12px;border-radius:10px;cursor:pointer}
+    .tab.active{background:#111827;color:#fff;border-color:#111827}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 6px 18px rgba(15,23,42,.08);padding:16px}
+    .section{display:none}
+    .section.active{display:block}
+    h2{margin:2px 0 12px;font-size:18px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .col{flex:1;min-width:240px}
+
+    .field{display:grid;gap:6px;margin-bottom:10px}
+    .label{font-size:13px;color:var(--muted)}
+    .input,.select,textarea{height:40px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
+    textarea{height:84px;resize:vertical}
+    .input:focus,.select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,41,55,.15)}
+
+    .btn{height:40px;padding:0 14px;border-radius:8px;border:0;background:var(--accent);color:#fff;cursor:pointer}
+    .btn.secondary{background:#334155}
+    .btn.light{background:#e2e8f0;color:#0f172a}
+
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px dashed var(--border);text-align:left;padding:8px}
+
+    .note{color:var(--muted);font-size:13px}
+    .spacer{height:8px}
+
+    /* Simple list blocks */
+    .list{display:grid;gap:8px;margin-top:10px}
+    .item{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff}
+
+    /* QR placeholder */
+    .qr{width:96px;height:96px;border:1px solid var(--border);border-radius:8px;display:grid;place-items:center;font-size:12px;color:var(--muted);background:#f8fafc}
+
+    @media (max-width:820px){.row{flex-direction:column}}
+  </style>
+  <script>
+    function showTab(id){
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+      document.getElementById('tab-'+id).classList.add('active');
+      document.getElementById(id).classList.add('active');
+    }
+
+    // Add Buildings: manage rooms dynamically (client-side only)
+    function addRoom(){
+      const wrap=document.getElementById('roomsWrap');
+      const idx=wrap.children.length+1;
+      const row=document.createElement('div');
+      row.className='item';
+      row.innerHTML=`
+        <div class="row">
+          <div class="col">
+            <div class="field"><span class="label">Room Number</span>
+              <input class="input" type="text" placeholder="e.g., CS-204" />
+            </div>
+          </div>
+          <div class="col">
+            <div class="field"><span class="label">Room Name</span>
+              <input class="input" type="text" placeholder="e.g., Software Lab" />
+            </div>
+          </div>
+          <div class="col" style="max-width:140px">
+            <div class="field"><span class="label">QR Code</span>
+              <div class="qr">QR</div>
+            </div>
+          </div>
+        </div>`;
+      wrap.appendChild(row);
+    }
+  </script>
+</head>
+<body onload="showTab('instructors')">
+  <div class="container">
+    <div class="top">
+      <div>
+        <div class="title">Admin Dashboard</div>
+        <div class="subtitle">Choose a section to manage</div>
+      </div>
+      <a class="subtitle" href="../login.html">Back to Login</a>
+    </div>
+
+    <div class="grid-buttons">
+      <a class="bigbtn" href="instructors/index.php">Add Instructors</a>
+      <a class="bigbtn" href="buildings.php">Add Buildings & Rooms</a>
+      <a class="bigbtn" href="details.php">Building Details</a>
+      <a class="bigbtn" href="monitor.php">Search & Show Buildings</a>
+      <a class="bigbtn" href="logs.php">Logs</a>
+    </div>
+  </div>
+</body>
+</html>
