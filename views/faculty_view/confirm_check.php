@@ -11,7 +11,9 @@
   if ($_SERVER['REQUEST_METHOD'] !== 'POST') { header('Location: scan.php'); exit; }
 
   $rid = (int)($_POST['room_id'] ?? 0);
-  $action = ($_POST['action'] ?? '') === 'checkout' ? 'checkout' : 'checkin';
+  $prevRid = (int)($_POST['previous_room_id'] ?? 0);
+  $rawAction = $_POST['action'] ?? '';
+  $action = ($rawAction === 'checkout') ? 'checkout' : (($rawAction === 'transfer') ? 'transfer' : 'checkin');
   if ($rid <= 0) { header('Location: scan.php?error=room'); exit; }
 
   // validate room
@@ -38,7 +40,7 @@
       mysqli_stmt_bind_param($stmt, 'ii', $rid, $uid);
       $ok = $ok && mysqli_stmt_execute($stmt);
       mysqli_stmt_close($stmt);
-    } else {
+    } else if ($action === 'checkout') {
       // presence out
       $stmt = mysqli_prepare($conn, "INSERT INTO presence(faculty_user_id,room_id,status,source) VALUES(?,?,'out','qr')");
       mysqli_stmt_bind_param($stmt, 'ii', $uid, $rid);
@@ -51,6 +53,38 @@
       mysqli_stmt_close($stmt);
       // room_logs
       $stmt = mysqli_prepare($conn, "INSERT INTO room_logs(room_id,faculty_user_id,action) VALUES(?,?,'checkout')");
+      mysqli_stmt_bind_param($stmt, 'ii', $rid, $uid);
+      $ok = $ok && mysqli_stmt_execute($stmt);
+      mysqli_stmt_close($stmt);
+    } else { // transfer: checkout previous room then checkin new room
+      $curRid = null; $curStatus = null;
+      $prs = mysqli_query($conn, "SELECT room_id, status FROM v_current_presence WHERE faculty_user_id=".$uid." LIMIT 1");
+      if ($prs && ($p = mysqli_fetch_assoc($prs))) { $curRid = (int)$p['room_id']; $curStatus = (string)$p['status']; }
+
+      if ($prevRid > 0 && $curRid && $curStatus !== 'out' && $curRid === $prevRid) {
+        $stmt = mysqli_prepare($conn, "INSERT INTO presence(faculty_user_id,room_id,status,source) VALUES(?,?,'out','qr')");
+        mysqli_stmt_bind_param($stmt, 'ii', $uid, $prevRid);
+        $ok = $ok && mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        $stmt = mysqli_prepare($conn, "INSERT INTO instructor_logs(faculty_user_id,action,status,room_id,source) VALUES(?,'checkout','out',?,'qr')");
+        mysqli_stmt_bind_param($stmt, 'ii', $uid, $prevRid);
+        $ok = $ok && mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+        $stmt = mysqli_prepare($conn, "INSERT INTO room_logs(room_id,faculty_user_id,action) VALUES(?,?,'checkout')");
+        mysqli_stmt_bind_param($stmt, 'ii', $prevRid, $uid);
+        $ok = $ok && mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+      }
+
+      $stmt = mysqli_prepare($conn, "INSERT INTO presence(faculty_user_id,room_id,status,source) VALUES(?,?,'available','qr')");
+      mysqli_stmt_bind_param($stmt, 'ii', $uid, $rid);
+      $ok = $ok && mysqli_stmt_execute($stmt);
+      mysqli_stmt_close($stmt);
+      $stmt = mysqli_prepare($conn, "INSERT INTO instructor_logs(faculty_user_id,action,status,room_id,source) VALUES(?,'checkin','available',?,'qr')");
+      mysqli_stmt_bind_param($stmt, 'ii', $uid, $rid);
+      $ok = $ok && mysqli_stmt_execute($stmt);
+      mysqli_stmt_close($stmt);
+      $stmt = mysqli_prepare($conn, "INSERT INTO room_logs(room_id,faculty_user_id,action) VALUES(?,?,'checkin')");
       mysqli_stmt_bind_param($stmt, 'ii', $rid, $uid);
       $ok = $ok && mysqli_stmt_execute($stmt);
       mysqli_stmt_close($stmt);

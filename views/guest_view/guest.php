@@ -19,10 +19,36 @@
   if ($bid > 0) { $where[] = "b.id=".(int)$bid; }
   $whereSql = implode(' AND ', $where);
   $sql = "SELECT u.id,u.name,u.email,u.department,u.role,
-                 b.name AS building_name, r.room_number, r.room_name, p.status
+                 b.name AS building_name, r.room_number, r.room_name, lp.status
             FROM users u
-       LEFT JOIN v_current_presence p ON p.faculty_user_id = u.id
-       LEFT JOIN rooms r ON r.id = p.room_id
+       LEFT JOIN (
+                 SELECT x.faculty_user_id,
+                        x.status,
+                        COALESCE(x.room_id, pn.room_id) AS room_id
+                   FROM (
+                         SELECT p2.faculty_user_id, p2.status, p2.room_id, p2.created_at
+                           FROM presence p2
+                           JOIN (
+                                 SELECT faculty_user_id, MAX(created_at) AS max_created
+                                   FROM presence
+                                  WHERE DATE(created_at)=CURDATE()
+                               GROUP BY faculty_user_id
+                                ) px
+                             ON px.faculty_user_id = p2.faculty_user_id AND px.max_created = p2.created_at
+                        ) x
+                   LEFT JOIN (
+                              SELECT p3.faculty_user_id, p3.room_id, p3.created_at
+                                FROM presence p3
+                               WHERE DATE(p3.created_at)=CURDATE() AND p3.room_id IS NOT NULL
+                            ) pn
+                       ON pn.faculty_user_id = x.faculty_user_id
+                      AND pn.created_at = (
+                           SELECT MAX(created_at) FROM presence pp
+                            WHERE pp.faculty_user_id = x.faculty_user_id AND DATE(pp.created_at)=CURDATE() AND pp.room_id IS NOT NULL
+                      )
+               ) lp
+            ON lp.faculty_user_id = u.id
+       LEFT JOIN rooms r ON r.id = lp.room_id
        LEFT JOIN buildings b ON b.id = r.building_id
            WHERE $whereSql
         ORDER BY u.name ASC
@@ -98,18 +124,19 @@
             <?php if (empty($instructors)) { echo '<div class="row"><div class="td" style="grid-column:1/-1;color:#6b7280">No instructors found.</div></div>'; } ?>
             <?php foreach ($instructors as $u) { ?>
               <?php
+                $isOut = strtolower((string)($u['status'] ?? '')) === 'out' || ($u['status'] ?? '') === '';
                 $loc = 'Unknown';
-                if (!empty($u['building_name']) && (!empty($u['room_number']) || !empty($u['room_name']))) {
+                if (!$isOut && !empty($u['building_name']) && (!empty($u['room_number']) || !empty($u['room_name']))) {
                   $rdisp = ($u['room_number'] !== null && $u['room_number'] !== '') ? $u['room_number'] : $u['room_name'];
                   $loc = $u['building_name'].' • '.$rdisp;
                 }
               ?>
               <div class="row">
-                <div class="td"><?php echo htmlspecialchars($u['status'] ?: '—'); ?></div>
+                <div class="td"><?php $s=(string)($u['status'] ?? ''); $ls=strtolower($s); $sd=$s!=='' ? ($ls==='dnd'?'DND':ucwords($ls)) : 'No log/Out'; echo htmlspecialchars($sd); ?></div>
                 <div class="td"><strong><?php echo htmlspecialchars($u['name']); ?></strong><div class="muted"><?php echo htmlspecialchars($u['email']); ?></div></div>
                 <div class="td muted">—</div>
-                <div class="td"><?php echo htmlspecialchars($u['room_number'] ?: $u['room_name'] ?: '—'); ?></div>
-                <div class="td"><?php echo htmlspecialchars($u['building_name'] ?: 'Unknown'); ?></div>
+                <div class="td"><?php echo htmlspecialchars($isOut ? '—' : ($u['room_number'] ?: $u['room_name'] ?: '—')); ?></div>
+                <div class="td"><?php echo htmlspecialchars($isOut ? '—' : ($u['building_name'] ?: 'Unknown')); ?></div>
                 <div class="td"><?php echo htmlspecialchars($u['department'] ?: '—'); ?></div>
                 <div class="td"><?php echo htmlspecialchars($u['role'] ?: '—'); ?></div>
               </div>

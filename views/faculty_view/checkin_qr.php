@@ -51,14 +51,15 @@
   if ($rs && ($row = mysqli_fetch_assoc($rs))) { $room = $row; }
   if (!$room) { http_response_code(404); echo '<!DOCTYPE html><html><body><p>Room not found.</p></body></html>'; exit; }
 
-  // Determine current presence (v_current_presence should exist)
+  // Determine current presence from latest instructor_logs to avoid view timing ambiguity
   $curRoomId = null; $curStatus = null;
-  $prs = mysqli_query($conn, "SELECT room_id, status FROM v_current_presence WHERE faculty_user_id=".$uid." LIMIT 1");
+  $prs = mysqli_query($conn, "SELECT room_id, status FROM instructor_logs WHERE faculty_user_id=".$uid." ORDER BY created_at DESC, id DESC LIMIT 1");
   if ($prs && ($p = mysqli_fetch_assoc($prs))) { $curRoomId = $p['room_id']; $curStatus = $p['status']; }
 
   $inThisRoom = $curRoomId !== null && (int)$curRoomId === (int)$room['id'] && $curStatus !== 'out';
-  $action = $inThisRoom ? 'checkout' : 'checkin';
-  $question = $inThisRoom ? 'Log out from this room?' : 'Log in to this room?';
+  $inOtherRoom = $curRoomId !== null && (int)$curRoomId !== (int)$room['id'] && $curStatus !== 'out';
+  $action = $inThisRoom ? 'checkout' : ($inOtherRoom ? 'transfer' : 'checkin');
+  $question = $inThisRoom ? 'Log out from this room?' : ($inOtherRoom ? 'You are currently logged in to another room. Continue to move to this room and log out from the previous one?' : 'Log in to this room?');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -107,6 +108,7 @@
           <form class="toolbar" method="post" action="confirm_check.php" style="gap:10px;margin-top:10px">
             <input type="hidden" name="room_id" value="<?php echo (int)$room['id']; ?>" />
             <input type="hidden" name="action" value="<?php echo htmlspecialchars($action); ?>" />
+            <?php if ($action === 'transfer') { echo '<input type="hidden" name="previous_room_id" value="'.(int)$curRoomId.'" />'; } ?>
             <button class="btn primary" type="submit">Confirm</button>
             <a class="btn ghost" href="scan.php" role="button">Cancel</a>
           </form>

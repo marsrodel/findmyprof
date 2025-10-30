@@ -26,7 +26,7 @@
       #preview{height:200px;max-width:100%}
     }
   </style>
-  <script src="https://unpkg.com/html5-qrcode" defer></script>
+  <!-- Prefer native BarcodeDetector; fallback to html5-qrcode (CDN) with service worker caching for offline reuse. -->
 </head>
 <body>
   <header class="topbar">
@@ -55,7 +55,10 @@
       <section class="panel scan-panel">
         <div class="panel-head"><h3>SCAN QR</h3></div>
         <div class="panel-body">
-          <div id="preview"><span class="muted">Camera Preview</span></div>
+          <div id="preview">
+            <video id="video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
+            <div id="h5c" style="width:100%;height:100%;display:none"></div>
+          </div>
           <div class="field two-col">
             <label>
               <span class="label">CAMERA</span>
@@ -78,109 +81,222 @@
   </footer>
 
   <script>
-    let html5QrCode = null;
-    const preview = document.getElementById('preview');
+    const HTML5_QRCODE_LOCAL = '../../public/js/html5-qrcode.min.js';
+    const HTML5_QRCODE_CDNS = [
+      'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
+      'https://unpkg.com/html5-qrcode@2.3.8/minified/html5-qrcode.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js'
+    ];
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('../../public/sw.js').catch(()=>{});
+      });
+    }
+    const video = document.getElementById('video');
     const statusEl = document.getElementById('status');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
     const fileInput = document.getElementById('fileInput');
     const cameraSelect = document.getElementById('cameraSelect');
+    const h5Container = document.getElementById('h5c');
 
-    function onScanSuccess(decodedText) {
+    let stream = null;
+    let detector = null;
+    let scanning = false;
+    let h5 = null; // Html5Qrcode instance when used
+
+    function loadScriptOnce(src){
+      return new Promise((resolve, reject) => {
+        if (document.querySelector(`script[data-dyn="${src}"]`)) return resolve();
+        const s = document.createElement('script');
+        s.src = src; s.async = true; s.defer = true; s.dataset.dyn = src;
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Failed to load '+src));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function ensureHtml5QrcodeReady(){
+      if (window.Html5Qrcode) return true;
+      // try local first (works fully offline if file is present)
+      try { await loadScriptOnce(HTML5_QRCODE_LOCAL); } catch(e) {}
+      if (window.Html5Qrcode) return true;
+      // fallback to CDN (will be cached by SW after first online use)
+      for (const url of HTML5_QRCODE_CDNS) {
+        try { await loadScriptOnce(url); break; } catch(e) { /* try next */ }
+      }
+      if (!window.Html5Qrcode) return false;
+      // wait up to 3s for global to appear
+      const t0 = Date.now();
+      while (!window.Html5Qrcode && Date.now()-t0 < 3000) { await new Promise(r=>setTimeout(r,100)); }
+      return !!window.Html5Qrcode;
+    }
+
+    function onScanSuccess(text) {
       try {
-        const url = 'checkin_qr.php?data=' + encodeURIComponent(decodedText);
+        const url = 'checkin_qr.php?data=' + encodeURIComponent(text);
         window.location.href = url;
       } catch (e) {
         statusEl.textContent = 'Scan error: ' + e.message;
       }
     }
-    function onScanFailure(error) {}
 
-    async function populateDevices() {
+    async function ensureDevices() {
       cameraSelect.innerHTML = '';
       try {
-        const devices = await Html5Qrcode.getCameras();
-        if (!devices || devices.length === 0) {
-          const opt = document.createElement('option');
-          opt.text = 'No camera found';
-          cameraSelect.add(opt);
-          return [];
+        // Some browsers need a prompt to enumerate devices
+        await navigator.mediaDevices.getUserMedia({ video: true }).then(s=>s.getTracks().forEach(t=>t.stop())).catch(()=>{});
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cams = devices.filter(d=>d.kind==='videoinput');
+        if (cams.length === 0) {
+          const opt = document.createElement('option'); opt.text = 'No camera found'; cameraSelect.add(opt); return [];
         }
-        devices.forEach((d,i)=>{
+        cams.forEach((d,i)=>{
           const opt = document.createElement('option');
-          opt.value = d.id;
+          opt.value = d.deviceId;
           opt.text = d.label || ('Camera ' + (i+1));
           if (/back|rear/i.test(d.label)) opt.selected = true;
           cameraSelect.add(opt);
         });
-        return devices;
+        return cams;
       } catch (e) { statusEl.textContent = 'Cannot enumerate cameras: ' + e.message; return []; }
     }
 
-    async function ensurePermissionOnce() {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        stream.getTracks().forEach(t=>t.stop());
-      } catch (e) {}
-    }
-
     async function startCamera() {
-      if (!window.Html5Qrcode) { statusEl.textContent = 'Scanner library not loaded yet.'; return; }
-      try {
-        if (!html5QrCode) { html5QrCode = new Html5Qrcode('preview'); }
-        try { await ensurePermissionOnce(); } catch (e) {}
-
-        let started = false;
+      // Try native path first
+      if ('BarcodeDetector' in window) {
         try {
-          const devices = await populateDevices();
-          if (devices && devices.length > 0) {
-            const selected = cameraSelect.value || devices[0].id;
-            await html5QrCode.start(selected, { fps: 10, qrbox: { width: 200, height: 200 } }, onScanSuccess, onScanFailure);
-            started = true;
+          if (!detector) detector = new BarcodeDetector({ formats: ['qr_code'] });
+        } catch (e) { /* fallthrough to html5-qrcode */ }
+      }
+
+      if (detector) {
+        try {
+          await stopCamera();
+          const cams = await ensureDevices();
+          const selectedId = cameraSelect.value || (cams[0] && cams[0].deviceId);
+          // Try with selected deviceId; fallback chains if it fails
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: selectedId ? { deviceId: { exact: selectedId } } : { facingMode: 'environment' }, audio: false });
+          } catch (e1) {
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } }, audio: false });
+            } catch (e2) {
+              stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+            }
           }
-        } catch (e) {}
-        if (!started) {
-          await html5QrCode.start({ facingMode: { exact: 'environment' } }, { fps: 10, qrbox: { width: 200, height: 200 } }, onScanSuccess, onScanFailure)
-            .catch(async ()=>{
-              await html5QrCode.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 200, height: 200 } }, onScanSuccess, onScanFailure);
-            });
+          video.muted = true;
+          video.srcObject = stream;
+          try { await video.play(); } catch(_) {}
+          video.style.display = '';
+          h5Container.style.display = 'none';
+          scanning = true;
+          statusEl.textContent = 'Scanning...';
+          requestAnimationFrame(scanLoop);
+          return;
+        } catch (e) { /* fallback to html5-qrcode */ }
+      }
+
+      // Fallback: html5-qrcode (works across browsers; cached by SW for offline)
+      statusEl.textContent = 'Loading scanner...';
+      const ok = await ensureHtml5QrcodeReady();
+      if (!ok) { statusEl.textContent = 'Scanner not ready yet. Try again in a moment.'; return; }
+      try {
+        let cams = [];
+        try { cams = await Html5Qrcode.getCameras(); } catch(_) { cams = []; }
+        // populate selector if empty
+        if (cameraSelect.options.length === 0 && cams && cams.length) {
+          cams.forEach((d,i)=>{
+            const opt = document.createElement('option');
+            opt.value = d.id; opt.text = d.label || ('Camera ' + (i+1));
+            if (/back|rear/i.test(d.label)) opt.selected = true;
+            cameraSelect.add(opt);
+          });
+        }
+        const sel = cameraSelect.value || (cams[0] && cams[0].id) || { facingMode:'environment' };
+        // start html5-qrcode on its own container
+        h5Container.style.display = '';
+        video.style.display = 'none';
+        if (!h5) h5 = new Html5Qrcode('h5c');
+        try {
+          await h5.start(sel, { fps: 10, qrbox: { width: 200, height: 200 } }, onScanSuccess, () => {});
+        } catch (eStart) {
+          // final fallback: try generic constraints object
+          await h5.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 200, height: 200 } }, onScanSuccess, () => {});
         }
         statusEl.textContent = 'Scanning...';
-      } catch (e) { statusEl.textContent = 'Unable to start camera: ' + e.message; }
+      } catch (e) {
+        const msg = (e && e.name === 'NotAllowedError') ? 'Camera permission denied. Please allow camera access.' : ('Unable to start camera: ' + (e && e.message ? e.message : e));
+        statusEl.textContent = msg;
+      }
     }
 
     async function stopCamera() {
+      scanning = false;
+      if (stream) {
+        stream.getTracks().forEach(t=>t.stop());
+        stream = null;
+      }
       try {
-        if (html5QrCode && html5QrCode.isScanning) {
-          await html5QrCode.stop();
-          await html5QrCode.clear();
-          statusEl.textContent = 'Camera stopped.';
-        }
-      } catch (e) { statusEl.textContent = 'Error stopping camera: ' + e.message; }
+        if (h5 && h5._isScanning) { await h5.stop(); await h5.clear(); }
+      } catch (_) {}
+      h5Container.style.display = 'none';
+      video.style.display = '';
+      statusEl.textContent = 'Camera stopped.';
     }
 
+    async function scanLoop() {
+      if (!scanning || !detector) return;
+      try {
+        const barcodes = await detector.detect(video);
+        if (barcodes && barcodes.length > 0) {
+          scanning = false;
+          await stopCamera();
+          const val = barcodes[0].rawValue || barcodes[0].rawText || '';
+          if (val) return onScanSuccess(val);
+        }
+      } catch (_) {}
+      if (scanning) requestAnimationFrame(scanLoop);
+    }
+
+    window.addEventListener('load', ensureDevices);
     startBtn.addEventListener('click', startCamera);
     stopBtn.addEventListener('click', stopCamera);
-
-    window.addEventListener('load', async () => {
-      if (window.Html5Qrcode) { await populateDevices(); }
-    });
 
     fileInput.addEventListener('change', async (ev) => {
       const f = ev.target.files && ev.target.files[0];
       if (!f) return;
-      if (!window.Html5Qrcode) { statusEl.textContent = 'Scanner library not ready.'; return; }
+      // Try native first
+      if ('BarcodeDetector' in window) {
+        try {
+          if (!detector) detector = new BarcodeDetector({ formats: ['qr_code'] });
+          const img = new Image();
+          img.onload = async () => {
+            try {
+              const canvas = document.createElement('canvas');
+              canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0);
+              const codes = await detector.detect(canvas);
+              if (codes && codes.length > 0) { const val = codes[0].rawValue || codes[0].rawText || ''; if (val) return onScanSuccess(val); }
+              statusEl.textContent = 'No QR found in image.';
+            } catch (e) { statusEl.textContent = 'Failed to read QR: ' + e.message; }
+          };
+          img.onerror = () => { statusEl.textContent = 'Cannot load image.'; };
+          img.src = URL.createObjectURL(f);
+          return;
+        } catch (e) { /* fallthrough */ }
+      }
+      // Fallback: html5-qrcode local decoding of image
+      statusEl.textContent = 'Loading scanner...';
+      const ok = await ensureHtml5QrcodeReady();
+      if (!ok) { statusEl.textContent = 'Scanner not ready yet. Try again in a moment.'; return; }
       try {
         const tmpId = 'tmp-qr-reader';
-        const tmpDiv = document.createElement('div');
-        tmpDiv.id = tmpId;
-        tmpDiv.style.display = 'none';
-        document.body.appendChild(tmpDiv);
+        const tmpDiv = document.createElement('div'); tmpDiv.id = tmpId; tmpDiv.style.display = 'none'; document.body.appendChild(tmpDiv);
         const scanner = new Html5Qrcode(tmpId);
         const result = await scanner.scanFile(f, true);
-        scanner.clear();
-        tmpDiv.remove();
+        await scanner.clear(); tmpDiv.remove();
         onScanSuccess(result);
       } catch (e) { statusEl.textContent = 'Failed to read QR: ' + e.message; }
     });
