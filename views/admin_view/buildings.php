@@ -149,11 +149,9 @@
                   ?>
                 </span></div>
               </div>
-              <?php if ($qrImg || $qrPayload) { ?>
-                <div class="qr-actions" style="margin-top:10px">
-                  <?php if ($qrPayload) { ?>
-                    <a class="btn secondary" href="data:text/plain;charset=utf-8,<?php echo rawurlencode($qrPayload); ?>" download="room_<?php echo (int)$rid; ?>_payload.txt">⬇ Download to File</a>
-                  <?php } ?>
+              <?php if ($rid>0 && ($qrImg || $qrPayload)) { ?>
+                <div class="qr-actions" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                  <a class="btn secondary" href="#" onclick="return printPoster(<?php echo (int)$rid; ?>, <?php echo (int)$bid; ?>)">⬇ Download to File</a>
                   <?php if ($qrImg) { ?>
                     <a class="btn secondary" href="<?php echo htmlspecialchars($qrImg); ?>" download>⬇ Download PNG</a>
                   <?php } ?>
@@ -171,3 +169,11 @@
   </footer>
 </body>
 </html>
+<script>
+  function printPoster(rid, bid){
+    var url = 'qr_poster.php?rid=' + encodeURIComponent(rid) + '&bid=' + encodeURIComponent(bid) + '&auto=1';
+    var w = window.open(url, 'qrPoster', 'width=900,height=1100,noopener');
+    if (w) { try { w.focus(); } catch(e){} }
+    return false;
+  }
+</script>

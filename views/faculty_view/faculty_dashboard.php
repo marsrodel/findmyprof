@@ -103,14 +103,18 @@
   $qb = mysqli_query($conn, 'SELECT id,name FROM buildings ORDER BY name ASC');
   if ($qb) { while ($r = mysqli_fetch_assoc($qb)) { $buildings[] = $r; } }
 
-  // Determine current room/status from latest instructor log
+  // Determine current room/status from today's latest presence only (resets next day automatically)
   $current_room = null; $current_status = null;
-  $qr = mysqli_query($conn, "SELECT l.room_id,l.status, r.room_number, r.room_name, b.name AS building_name
-                               FROM instructor_logs l
-                          LEFT JOIN rooms r ON r.id = l.room_id
+  $qr = mysqli_query($conn, "SELECT p.room_id,p.status, r.room_number, r.room_name, b.name AS building_name
+                               FROM presence p
+                          LEFT JOIN rooms r ON r.id = p.room_id
                           LEFT JOIN buildings b ON b.id = r.building_id
-                              WHERE l.faculty_user_id = ".$uid.
-                            " ORDER BY l.created_at DESC, l.id DESC LIMIT 1");
+                              WHERE p.faculty_user_id = ".$uid.
+                            " AND p.created_at = (
+                                   SELECT MAX(created_at) FROM presence
+                                    WHERE faculty_user_id = ".$uid." AND DATE(created_at)=CURDATE()
+                                 )
+                                 LIMIT 1");
   if ($qr && ($cr = mysqli_fetch_assoc($qr))) {
     if (!empty($cr['room_id']) && strtolower((string)$cr['status']) !== 'out') {
       $current_room = $cr; $current_status = $cr['status'];

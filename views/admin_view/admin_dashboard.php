@@ -18,15 +18,41 @@
   $q = trim($_GET['q'] ?? '');
   $bid = isset($_GET['bid']) ? (int)$_GET['bid'] : 0;
 
-  // Search instructors and executives with current location
+  // Search instructors and executives with current location (latest presence today, fallback to latest non-null room today)
   $instructors = [];
   if ($q !== '') {
     $like = '%'.mysqli_real_escape_string($conn, $q).'%';
     $sql = "SELECT u.id,u.name,u.email,u.department,u.role,
-                   b.name AS building_name, r.room_number, r.room_name, p.status
+                   b.name AS building_name, r.room_number, r.room_name, lp.status
               FROM users u
-         LEFT JOIN v_current_presence p ON p.faculty_user_id = u.id
-         LEFT JOIN rooms r ON r.id = p.room_id
+         LEFT JOIN (
+                    SELECT x.faculty_user_id,
+                           x.status,
+                           COALESCE(x.room_id, pn.room_id) AS room_id
+                      FROM (
+                            SELECT p2.faculty_user_id, p2.status, p2.room_id, p2.created_at
+                              FROM presence p2
+                              JOIN (
+                                    SELECT faculty_user_id, MAX(created_at) AS max_created
+                                      FROM presence
+                                     WHERE DATE(created_at)=CURDATE()
+                                  GROUP BY faculty_user_id
+                                   ) px
+                                ON px.faculty_user_id = p2.faculty_user_id AND px.max_created = p2.created_at
+                           ) x
+                      LEFT JOIN (
+                                 SELECT p3.faculty_user_id, p3.room_id, p3.created_at
+                                   FROM presence p3
+                                  WHERE DATE(p3.created_at)=CURDATE() AND p3.room_id IS NOT NULL
+                               ) pn
+                        ON pn.faculty_user_id = x.faculty_user_id
+                       AND pn.created_at = (
+                            SELECT MAX(created_at) FROM presence pp
+                             WHERE pp.faculty_user_id = x.faculty_user_id AND DATE(pp.created_at)=CURDATE() AND pp.room_id IS NOT NULL
+                       )
+                   ) lp
+                ON lp.faculty_user_id = u.id
+         LEFT JOIN rooms r ON r.id = lp.room_id
          LEFT JOIN buildings b ON b.id = r.building_id
              WHERE u.role IN ('Instructor','Executive') AND (u.name LIKE '$like' OR u.email LIKE '$like')
           ORDER BY u.name ASC
@@ -47,12 +73,21 @@
     while ($row = mysqli_fetch_assoc($qr)) { $roomsByBuilding[$row['building_id']][] = $row; }
   }
 
-  // Current occupants per room (exclude 'out')
+  // Current occupants per room (latest presence today with non-null room and not 'out')
   $occByRoom = [];
-  $qr = mysqli_query($conn, "SELECT p.room_id, u.name, p.status
-                               FROM v_current_presence p
-                               JOIN users u ON u.id = p.faculty_user_id
-                              WHERE p.room_id IS NOT NULL AND p.status <> 'out'");
+  $qr = mysqli_query($conn, "
+    SELECT p1.room_id, u.name, p1.status
+      FROM presence p1
+      JOIN (
+            SELECT faculty_user_id, MAX(created_at) AS max_created
+              FROM presence
+             WHERE DATE(created_at)=CURDATE()
+          GROUP BY faculty_user_id
+           ) px
+        ON px.faculty_user_id = p1.faculty_user_id AND px.max_created = p1.created_at
+      JOIN users u ON u.id = p1.faculty_user_id
+     WHERE p1.room_id IS NOT NULL AND LOWER(p1.status) <> 'out'
+  ");
   if ($qr) {
     while ($row = mysqli_fetch_assoc($qr)) { $occByRoom[$row['room_id']][] = [$row['name'], $row['status']]; }
   }
