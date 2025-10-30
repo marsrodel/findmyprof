@@ -155,7 +155,7 @@
       </div>
 
       <div class="status-row">
-        <span class="status-pill" id="statusToggle" style="cursor:pointer" onclick="toggleStatus()">
+        <span class="status-pill" id="statusToggle" style="cursor:pointer" onclick="openStatusPanel()">
           <span class="dot"></span>
           STATUS
           <span class="chev">▾</span>
@@ -164,7 +164,9 @@
 
       <?php if ($notice !== '') { echo '<div class="notice" style="margin:10px 0">'.htmlspecialchars($notice).'</div>'; } ?>
 
-      <section id="statusPanel" class="panel" style="display:none">
+      <div id="statusModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);place-items:center;z-index:1000">
+        <section class="panel" style="width:720px;max-width:95%;max-height:80vh;overflow:auto;position:relative">
+          <button type="button" onclick="closeStatusPanel()" aria-label="Close" style="position:absolute;right:8px;top:8px" class="btn ghost">✕</button>
         <?php if ($current_room) { ?>
           <div class="panel-head"><h3>CURRENT ROOM</h3></div>
           <div class="panel-body" style="padding:12px 16px">
@@ -180,12 +182,22 @@
               <div class="label">ROOM</div>
               <div><strong><?php echo htmlspecialchars($current_room['room_number'] ?: $current_room['room_name']); ?></strong> <span class="muted"><?php echo htmlspecialchars($current_room['room_name']); ?></span></div>
             </div>
-            <form class="toolbar" method="post" action="confirm_check.php" style="gap:10px;margin-top:10px;flex-wrap:wrap">
+            <form id="logoutForm" class="toolbar" method="post" action="confirm_check.php" style="gap:10px;margin-top:10px;flex-wrap:wrap">
               <input type="hidden" name="room_id" value="<?php echo (int)$current_room['room_id']; ?>" />
               <input type="hidden" name="action" value="checkout" />
-              <button class="btn" type="submit">Log out from this room</button>
+              <button class="btn" type="button" onclick="openLogoutConfirm()">Log out from this room</button>
             </form>
-            <form class="toolbar" method="post" action="" style="gap:10px;margin-top:10px;flex-wrap:wrap">
+            <div id="logoutConfirm" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);place-items:center;z-index:1000">
+              <div style="background:#fff;padding:16px;border-radius:8px;width:320px;max-width:90%">
+                <div style="font-weight:600;margin-bottom:8px">Confirm Logout</div>
+                <div style="margin-bottom:12px">Are you sure you want to log out from this room?</div>
+                <div style="display:flex;gap:8px;justify-content:flex-end">
+                  <button class="btn" type="button" onclick="closeLogoutConfirm()">Cancel</button>
+                  <button class="btn primary" type="button" onclick="submitLogout()">Log out</button>
+                </div>
+              </div>
+            </div>
+            <form class="toolbar" method="post" action="" style="display:flex;gap:10px;align-items:center;justify-content:flex-start;margin-top:10px;flex-wrap:wrap">
               <input type="hidden" name="room_id" value="<?php echo (int)$current_room['room_id']; ?>" />
               <label>
                 <span class="label">UPDATE STATUS</span>
@@ -198,62 +210,46 @@
                   <option value="out">Out</option>
                 </select>
               </label>
-              <button class="btn primary" type="submit" name="update_room_status" value="1">Update Status</button>
+              <button class="btn primary" type="submit" name="update_room_status" value="1" style="margin-left:auto">Update Status</button>
             </form>
           </div>
         <?php } else { ?>
           <div class="panel-head">
-            <h3>SET STATUS</h3>
+            <h3>STATUS</h3>
           </div>
-          <div class="panel-body" style="padding:12px 16px">
-            <form method="post" action="">
-              <div class="field two-col">
-                <label>
-                  <span class="label">STATUS</span>
-                  <select name="status">
-                    <option value="Available">Available</option>
-                    <option value="In class">In Class</option>
-                    <option value="Meeting">Meeting</option>
-                    <option value="Break">Break</option>
-                    <option value="DND">DND</option>
-                    <option value="Out">Out</option>
-                  </select>
-                </label>
-                <label>
-                  <span class="label">DURATION <span class="muted-note">(optional, minutes)</span></span>
-                  <input type="number" min="0" name="duration" placeholder="Value" />
-                </label>
-              </div>
-              <div class="field">
-                <label>
-                  <span class="label">BUILDING</span>
-                  <select name="building_id">
-                    <option value="0">-- none --</option>
-                    <?php foreach ($buildings as $b) { ?>
-                      <option value="<?php echo (int)$b['id']; ?>"><?php echo htmlspecialchars($b['name']); ?></option>
-                    <?php } ?>
-                  </select>
-                </label>
-              </div>
-              <div class="field">
-                <label>
-                  <span class="label">DESCRIPTION</span>
-                  <textarea name="description" rows="4" placeholder="Optional note"></textarea>
-                </label>
-              </div>
-              <div class="form-actions" style="display:grid;place-items:center;margin-top:10px">
-                <button class="btn primary" type="submit" name="set_status" value="1">SET STATUS</button>
-              </div>
-            </form>
+          <div class="panel-body" style="padding:16px 16px">
+            <div class="field">
+              <div class="label">CURRENT</div>
+              <div class="muted">You are not in any room. Please check in by scanning a room QR code.</div>
+            </div>
+            <div class="form-actions" style="display:flex;gap:10px;justify-content:center;margin-top:12px">
+              <a class="btn primary" href="scan.php">Scan QR to Check In</a>
+            </div>
           </div>
         <?php } ?>
-      </section>
+        </section>
+      </div>
 
       <script>
-        function toggleStatus(){
-          var p = document.getElementById('statusPanel');
-          if (!p) return;
-          p.style.display = (p.style.display === 'none' || p.style.display === '') ? 'block' : 'none';
+        function openStatusPanel(){
+          var m = document.getElementById('statusModal');
+          if (m){ m.style.display = 'grid'; }
+        }
+        function closeStatusPanel(){
+          var m = document.getElementById('statusModal');
+          if (m){ m.style.display = 'none'; }
+        }
+        function openLogoutConfirm(){
+          var m = document.getElementById('logoutConfirm');
+          if (m){ m.style.display = 'grid'; }
+        }
+        function closeLogoutConfirm(){
+          var m = document.getElementById('logoutConfirm');
+          if (m){ m.style.display = 'none'; }
+        }
+        function submitLogout(){
+          var f = document.getElementById('logoutForm');
+          if (f){ f.submit(); }
         }
       </script>
 

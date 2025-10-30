@@ -146,7 +146,7 @@
               <?php foreach ($instructors as $u) { ?>
                 <?php $isOut = strtolower((string)($u['status'] ?? '')) === 'out' || ($u['status'] ?? '') === ''; ?>
                 <div class="row">
-                  <div class="td"><?php echo htmlspecialchars(($u['status'] ?? '') !== '' ? $u['status'] : 'No log/Out'); ?></div>
+                  <div class="td"><?php $s=(string)($u['status'] ?? ''); $ls=strtolower($s); $sd=$s!=='' ? ($ls==='dnd'?'DND':ucwords($ls)) : 'No log/Out'; echo htmlspecialchars($sd); ?></div>
                   <div class="td"><strong><?php echo htmlspecialchars($u['name']); ?></strong><div class="muted"><?php echo htmlspecialchars($u['email']); ?></div></div>
                   <div class="td muted">—</div>
                   <div class="td"><?php echo htmlspecialchars($isOut ? '—' : ($u['room_number'] ?: $u['room_name'] ?: '—')); ?></div>
