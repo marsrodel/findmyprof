@@ -55,6 +55,21 @@
            LIMIT 200";
   $rs = mysqli_query($conn, $sql);
   if ($rs) { while ($row = mysqli_fetch_assoc($rs)) { $instructors[] = $row; } }
+  // Compute current scheduled slot for each instructor/executive
+  $nowTime = date('H:i:s');
+  $dayNum  = (int)date('N'); // 1=Mon ... 7=Sun
+  foreach ($instructors as &$u) {
+    $uid = (int)$u['id'];
+    $sched = null;
+    $qs = mysqli_prepare($conn, "SELECT s.course_code, s.start_time, s.end_time, b.name AS bname, r.room_number, r.room_name\n                                   FROM schedules s\n                              LEFT JOIN rooms r ON r.id = s.room_id\n                              LEFT JOIN buildings b ON b.id = r.building_id\n                                  WHERE s.faculty_user_id=? AND s.day_of_week=? AND s.start_time<=? AND s.end_time> ?\n                                  LIMIT 1");
+    mysqli_stmt_bind_param($qs, 'iiss', $uid, $dayNum, $nowTime, $nowTime);
+    if (mysqli_stmt_execute($qs)) {
+      $res = mysqli_stmt_get_result($qs);
+      if ($rowS = mysqli_fetch_assoc($res)) { $sched = $rowS; }
+    }
+    mysqli_stmt_close($qs);
+    $u['__sched'] = $sched;
+  }
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -134,7 +149,29 @@
               <div class="row">
                 <div class="td"><?php $s=(string)($u['status'] ?? ''); $ls=strtolower($s); $sd=$s!=='' ? ($ls==='dnd'?'DND':ucwords($ls)) : 'No log/Out'; echo htmlspecialchars($sd); ?></div>
                 <div class="td"><strong><?php echo htmlspecialchars($u['name']); ?></strong><div class="muted"><?php echo htmlspecialchars($u['email']); ?></div></div>
-                <div class="td muted">—</div>
+                <?php
+                  $sched = $u['__sched'] ?? null;
+                  $shouldRoom = '—';
+                  $shouldBldg = '—';
+                  $timeWin = '—';
+                  $mismatch = false;
+                  if ($sched) {
+                    $rdisp = ($sched['room_number'] !== null && $sched['room_number'] !== '') ? $sched['room_number'] : ($sched['room_name'] ?: '—');
+                    $shouldRoom = $rdisp;
+                    $shouldBldg = $sched['bname'] ?: '—';
+                    $timeWin = date('h:i A', strtotime($sched['start_time'])) . ' - ' . date('h:i A', strtotime($sched['end_time']));
+                    // Determine mismatch: no scan or different room/building
+                    if ($isOut) { $mismatch = true; }
+                    else {
+                      $currRoom = ($u['room_number'] !== null && $u['room_number'] !== '') ? $u['room_number'] : ($u['room_name'] ?: '');
+                      $currBldg = $u['building_name'] ?: '';
+                      if ($currRoom === '' || $currBldg === '' || strcasecmp($currRoom, $rdisp) !== 0 || strcasecmp((string)$currBldg, (string)$sched['bname']) !== 0) {
+                        $mismatch = true;
+                      }
+                    }
+                  }
+                ?>
+                <div class="td muted"><?php echo htmlspecialchars($timeWin); ?><?php if ($mismatch) { echo '<div class="muted">Should be at '.htmlspecialchars($shouldBldg).' • '.htmlspecialchars($shouldRoom).'</div>'; } ?></div>
                 <div class="td"><?php echo htmlspecialchars($isOut ? '—' : ($u['room_number'] ?: $u['room_name'] ?: '—')); ?></div>
                 <div class="td"><?php echo htmlspecialchars($isOut ? '—' : ($u['building_name'] ?: 'Unknown')); ?></div>
                 <div class="td"><?php echo htmlspecialchars($u['department'] ?: '—'); ?></div>

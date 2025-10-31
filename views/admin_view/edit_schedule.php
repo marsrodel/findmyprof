@@ -8,10 +8,14 @@ if ($uid > 0) {
   if ($rs && ($row = mysqli_fetch_assoc($rs))) { $_SESSION['role'] = $row['role']; $me = $row; }
 }
 // Restrict: only Admins can manage schedules (moved to admin side)
-if (($_SESSION['role'] ?? '') !== 'Admin') { header('Location: faculty_dashboard.php'); exit; }
-// If Admin hits this page, send them to the new admin schedule manager
-header('Location: ../admin_view/manage_schedules.php');
-exit;
+if (($_SESSION['role'] ?? '') !== 'Admin') { header('Location: ../faculty_view/faculty_dashboard.php'); exit; }
+// Target instructor/executive to manage
+$targetId = (int)($_GET['user_id'] ?? 0);
+if ($targetId <= 0) { header('Location: manage_schedules.php'); exit; }
+// Fetch target user for display
+$target = null;
+$tu = mysqli_query($conn, 'SELECT id,name,email,role FROM users WHERE id='.(int)$targetId.' LIMIT 1');
+if ($tu && ($rowt = mysqli_fetch_assoc($tu))) { $target = $rowt; }
 
 // Flash notice (PRG pattern)
 $notice = '';
@@ -26,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $delId = (int)($_POST['delete_id'] ?? 0);
     if ($delId>0) {
       $stmt = mysqli_prepare($conn, "DELETE FROM schedules WHERE id=? AND faculty_user_id=?");
-      mysqli_stmt_bind_param($stmt, 'ii', $delId, $uid);
+      mysqli_stmt_bind_param($stmt, 'ii', $delId, $targetId);
       if (mysqli_stmt_execute($stmt)) { $notice = 'Schedule entry deleted.'; } else { $notice = 'Failed to delete.'; }
       mysqli_stmt_close($stmt);
       $didAction = true;
@@ -47,11 +51,11 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     if (!$dayOfWeek) { $errors[] = 'Invalid day.'; }
     $validTime = function($t){ return preg_match('/^\d{2}:\d{2}$/', $t); };
     if (!$validTime($start) || !$validTime($end) || strtotime($start) >= strtotime($end)) { $errors[] = 'Invalid time window.'; }
-    // Enforce bounds: 07:00 to 20:00
+    // Enforce bounds: 07:00 to 20:30
     $minT = strtotime('07:00');
-    $maxT = strtotime('20:00');
+    $maxT = strtotime('20:30');
     if (strtotime($start) < $minT || strtotime($end) > $maxT) {
-      $errors[] = 'Time must be between 07:00 and 20:00.';
+      $errors[] = 'Time must be between 07:00 and 20:30.';
     }
     // Resolve room via IDs and validate relationship
     $roomId = null;
@@ -68,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     // Check time conflict with other schedules for the same user and day
     if (empty($errors) && $editId>0) {
       $q = mysqli_prepare($conn, "SELECT COUNT(*) AS cnt FROM schedules WHERE faculty_user_id=? AND day_of_week=? AND id<>? AND NOT (? >= end_time OR ? <= start_time)");
-      mysqli_stmt_bind_param($q, 'iiiss', $uid, $dayOfWeek, $editId, $start, $end);
+      mysqli_stmt_bind_param($q, 'iiiss', $targetId, $dayOfWeek, $editId, $start, $end);
       if (mysqli_stmt_execute($q)) {
         $res = mysqli_stmt_get_result($q);
         if ($rowC = mysqli_fetch_assoc($res)) { if ((int)$rowC['cnt'] > 0) { $errors[] = 'Time conflict with another schedule on the same day.'; } }
@@ -77,7 +81,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     }
     if (empty($errors) && $editId>0) {
       $stmt = mysqli_prepare($conn, "UPDATE schedules SET course_code=?, building_id=?, room_id=?, day_of_week=?, start_time=?, end_time=? WHERE id=? AND faculty_user_id=?");
-      mysqli_stmt_bind_param($stmt, 'siiissii', $course, $buildingId, $roomId, $dayOfWeek, $start, $end, $editId, $uid);
+      mysqli_stmt_bind_param($stmt, 'siiissii', $course, $buildingId, $roomId, $dayOfWeek, $start, $end, $editId, $targetId);
       if (mysqli_stmt_execute($stmt)) { $notice = 'Schedule entry updated.'; } else { $notice = 'Failed to update.'; }
       mysqli_stmt_close($stmt);
       $didAction = true;
@@ -126,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     // Check time conflict with other schedules for the same user and day
     if (empty($errors)) {
       $q = mysqli_prepare($conn, "SELECT COUNT(*) AS cnt FROM schedules WHERE faculty_user_id=? AND day_of_week=? AND NOT (? >= end_time OR ? <= start_time)");
-      mysqli_stmt_bind_param($q, 'iiss', $uid, $dayOfWeek, $start, $end);
+      mysqli_stmt_bind_param($q, 'iiss', $targetId, $dayOfWeek, $start, $end);
       if (mysqli_stmt_execute($q)) {
         $res = mysqli_stmt_get_result($q);
         if ($rowC = mysqli_fetch_assoc($res)) { if ((int)$rowC['cnt'] > 0) { $errors[] = 'Time conflict with another schedule on the same day.'; } }
@@ -135,7 +139,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     }
     if (empty($errors)) {
       $stmt = mysqli_prepare($conn, "INSERT INTO schedules (faculty_user_id, course_code, building_id, room_id, day_of_week, start_time, end_time) VALUES (?,?,?,?,?,?,?)");
-      mysqli_stmt_bind_param($stmt, 'isiiiss', $uid, $course, $buildingId, $roomId, $dayOfWeek, $start, $end);
+      mysqli_stmt_bind_param($stmt, 'isiiiss', $targetId, $course, $buildingId, $roomId, $dayOfWeek, $start, $end);
       if (mysqli_stmt_execute($stmt)) {
         $notice = 'Schedule entry saved.';
       } else {
@@ -151,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
   // Redirect after POST to prevent resubmission on refresh
   if ($didAction) {
     $_SESSION['flash_notice'] = $notice;
-    header('Location: faculty_schedule.php');
+    header('Location: edit_schedule.php?user_id='.(int)$targetId);
     exit;
   }
 }
@@ -190,7 +194,7 @@ if ($rr) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FindMyProf • My Schedule</title>
+  <title>FindMyProf • Edit Schedule</title>
   <link rel="stylesheet" href="../../css/faculty.css" />
   <style>
     .tabs { display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap }
@@ -247,7 +251,7 @@ if ($rr) {
         <div class="brand-mark" aria-hidden="true">LOGO</div>
         <span class="brand-name">FindMyProf</span>
       </div>
-      <h1 class="page-title">MY SCHEDULE</h1>
+      <h1 class="page-title">EDIT SCHEDULE</h1>
       <a class="btn ghost" href="../../server/logout.php">LOGOUT</a>
     </div>
   </header>
@@ -256,72 +260,26 @@ if ($rr) {
     <aside class="sidebar">
       <div class="avatar">A</div>
       <nav class="menu">
-        <a class="item" href="faculty_dashboard.php">DASHBOARD</a>
-        <a class="item" href="faculty_search.php">SEARCH</a>
-        <a class="item active" href="faculty_schedule.php">SCHEDULE</a>
-        <a class="item" href="faculty_profile.php">PROFILE</a>
-        <a class="item" href="faculty_logs.php">LOGS</a>
+        <a class="item" href="admin_dashboard.php">DASHBOARD</a>
+        <a class="item" href="executives_list.php">EXECUTIVES</a>
+        <a class="item" href="instructors_list.php">INSTRUCTORS</a>
+        <a class="item" href="buildings.php">BUILDINGS</a>
+        <a class="item" href="manage_schedules.php">SCHEDULES</a>
+        <a class="item" href="add_building.php">ADD BUILDING</a>
+        <a class="item" href="logs.php">LOGS</a>
+        <a class="item" href="add_personel.php">ADD PERSONEL</a>
       </nav>
     </aside>
 
     <main class="content">
       <?php if ($notice !== '') { echo '<div class="notice" style="margin:10px 0">'.htmlspecialchars($notice).'</div>'; } ?>
-
-      <?php
-        // Real-time: where should the instructor be now?
-        $nowTime = date('H:i:s');
-        $dayNum  = (int)date('N');
-        $nowSched = null;
-        if ($uid > 0) {
-          if ($stmt = mysqli_prepare($conn, "SELECT s.course_code, s.start_time, s.end_time, b.name AS bname, r.room_number, r.room_name\n                                               FROM schedules s\n                                          LEFT JOIN rooms r ON r.id = s.room_id\n                                          LEFT JOIN buildings b ON b.id = r.building_id\n                                              WHERE s.faculty_user_id=? AND s.day_of_week=? AND s.start_time<=? AND s.end_time>?\n                                              LIMIT 1")) {
-            mysqli_stmt_bind_param($stmt, 'iiss', $uid, $dayNum, $nowTime, $nowTime);
-            if (mysqli_stmt_execute($stmt)) {
-              $res = mysqli_stmt_get_result($stmt);
-              if ($rowS = mysqli_fetch_assoc($res)) { $nowSched = $rowS; }
-            }
-            mysqli_stmt_close($stmt);
-          }
-        }
-        // Latest presence today
-        $present = null;
-        if ($uid > 0) {
-          $sqlP = "SELECT p.status, p.room_id, b.name AS bname, r.room_number, r.room_name\n                     FROM presence p\n                LEFT JOIN rooms r ON r.id = p.room_id\n                LEFT JOIN buildings b ON b.id = r.building_id\n                    WHERE p.faculty_user_id=? AND DATE(p.created_at)=CURDATE()\n                 ORDER BY p.created_at DESC\n                    LIMIT 1";
-          if ($sp = mysqli_prepare($conn, $sqlP)) {
-            mysqli_stmt_bind_param($sp, 'i', $uid);
-            if (mysqli_stmt_execute($sp)) {
-              $rp = mysqli_stmt_get_result($sp);
-              if ($rowP = mysqli_fetch_assoc($rp)) { $present = $rowP; }
-            }
-            mysqli_stmt_close($sp);
-          }
-        }
-        // Build message
-        $nowMsg = '';
-        if ($nowSched) {
-          $schedRoom = ($nowSched['room_number'] !== null && $nowSched['room_number'] !== '') ? $nowSched['room_number'] : ($nowSched['room_name'] ?: '—');
-          $schedBldg = $nowSched['bname'] ?: '—';
-          $timeWin = date('h:i A', strtotime($nowSched['start_time'])) . ' - ' . date('h:i A', strtotime($nowSched['end_time']));
-          $mismatch = false;
-          $why = '';
-          if (!$present || strtolower((string)($present['status'] ?? '')) === 'out') {
-            $mismatch = true; $why = 'No scan yet for this timeslot.';
-          } else {
-            $currRoom = ($present['room_number'] !== null && $present['room_number'] !== '') ? $present['room_number'] : ($present['room_name'] ?: '');
-            $currBldg = $present['bname'] ?: '';
-            if ($currRoom === '' || $currBldg === '' || strcasecmp($currRoom, $schedRoom) !== 0 || strcasecmp((string)$currBldg, (string)$schedBldg) !== 0) {
-              $mismatch = true; $why = 'You appear to be in a different location than scheduled.';
-            }
-          }
-          $nowMsg = '<div class="panel" style="margin-bottom:12px">'
-                 .    '<div class="panel-head">NOW</div>'
-                 .    '<div class="panel-body">'
-                 .      '<div><strong>Scheduled:</strong> '.htmlspecialchars($schedBldg).' • '.htmlspecialchars($schedRoom).' <span class="muted">('.htmlspecialchars($timeWin).')</span></div>'
-                 .      ($mismatch ? '<div class="muted" style="margin-top:4px;color:#b45309">'.htmlspecialchars($why).'</div>' : '<div class="muted" style="margin-top:4px;color:#0b5b0c">You are at your scheduled location.</div>')
-                 .    '</div>'
-                 .  '</div>';
-        }
-        echo $nowMsg;
-      ?>
+      <div class="row" style="align-items:flex-start;margin:6px 0 10px;gap:0;flex-direction:column">
+        <a class="btn ghost" href="manage_schedules.php">← Back</a>
+        <div style="font-weight:800;margin-top:6px">
+          <?php echo htmlspecialchars($target['name'] ?? ''); ?>
+          <?php if (!empty($target['email'])) { echo ' <span class="muted">('.htmlspecialchars($target['email']).')</span>'; } ?>
+        </div>
+      </div>
 
       <section class="panel">
         <div class="panel-head">UPLOAD OR SCAN SCHEDULE (placeholder)</div>
@@ -342,14 +300,14 @@ if ($rr) {
         </div>
       </section>
       <?php
-        // Load current user's schedules for grid
+        // Load target user's schedules for grid
         $schedules = [];
         $sql = "SELECT s.id, s.course_code, s.day_of_week, s.start_time, s.end_time,
                        b.id AS building_id, b.name AS building_name, r.id AS room_id, r.room_number, r.room_name
                   FROM schedules s
              LEFT JOIN rooms r ON r.id = s.room_id
              LEFT JOIN buildings b ON b.id = r.building_id
-                 WHERE s.faculty_user_id = {$uid}
+                 WHERE s.faculty_user_id = {$targetId}
               ORDER BY s.day_of_week ASC, s.start_time ASC, s.id ASC";
         $rs = mysqli_query($conn, $sql);
         if ($rs) { while ($row = mysqli_fetch_assoc($rs)) { $schedules[] = $row; } }
@@ -364,9 +322,9 @@ if ($rr) {
         </div>
         <div class="panel-body" style="overflow:auto">
           <?php
-            // Build a 30-min slot grid from 07:00 to 20:30
+            // Build a 30-min slot grid from 07:00 to 20:30 (last row 20:00–20:30)
             $slots = [];
-            $startHM = [7,0]; $endHM=[20,30];
+            $startHM = [7,0]; $endHM=[20,0];
             $h=$startHM[0]; $m=$startHM[1];
             while($h<$endHM[0] || ($h==$endHM[0] && $m<=$endHM[1])){
               $nH=$h; $nM=$m+30; if($nM>=60){ $nH++; $nM-=60; }
@@ -495,6 +453,7 @@ if ($rr) {
                   <?php
                     for($h=7;$h<=20;$h++){
                       foreach([0,30] as $m){
+                        if ($h===20 && $m===30) { continue; }
                         $val = sprintf('%02d:%02d',$h,$m);
                         echo '<option value="'.$val.'">'.date('h:i A', strtotime($val)).'</option>';
                       }
@@ -563,6 +522,7 @@ if ($rr) {
                     <?php
                       for($h=7;$h<=20;$h++){
                         foreach([0,30] as $m){
+                          if ($h===20 && $m===30) { continue; }
                           $val = sprintf('%02d:%02d',$h,$m);
                           echo '<option value="'.$val.'">'.date('h:i A', strtotime($val)).'</option>';
                         }

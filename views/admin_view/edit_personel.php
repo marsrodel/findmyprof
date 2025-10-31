@@ -96,6 +96,7 @@
         <a class="item" href="executives_list.php">EXECUTIVES</a>
         <a class="item" href="instructors_list.php">INSTRUCTORS</a>
         <a class="item" href="buildings.php">BUILDINGS</a>
+        <a class="item" href="manage_schedules.php">SCHEDULES</a>
         <a class="item" href="add_building.php">ADD BUILDING</a>
         <a class="item" href="staff_list.php">STAFF</a>
         <a class="item" href="logs.php">LOGS</a>

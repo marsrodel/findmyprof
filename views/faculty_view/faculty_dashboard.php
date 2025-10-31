@@ -128,6 +128,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>FindMyProf • Faculty Dashboard</title>
   <link rel="stylesheet" href="../../css/faculty.css" />
+  <style>
+    /* Read-only timetable styles */
+    .tt { width:100%; border-collapse:collapse; table-layout:fixed; font-size:11px }
+    .tt th, .tt td { border:1px solid #6b7280; padding:4px; vertical-align:middle; line-height:1.15; text-align:center }
+    .tt td:not(.time) { padding:0 }
+    .tt th { background:#f8fafc; font-weight:700; font-size:11px; text-align:center }
+    .tt .time { width:125px; background:#f8fafc; font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding-right:8px }
+    .tt .slotbox { background:transparent; border:none; border-radius:0; padding:2px; font-size:11px; height:100%; box-sizing:border-box; text-align:center; display:flex; width:100%; height:100%; align-items:center; justify-content:center; flex-direction:column }
+    .tt .slotbox .title { font-weight:400; margin-bottom:2px; text-align:center; color:#000 }
+    .tt .slotbox .meta { color:#000; text-align:center }
+    .tt .slotbox .small { color:#000 }
+  </style>
 </head>
 <body>
   <header class="topbar">
@@ -258,12 +270,94 @@
         }
       </script>
 
-      <section class="panel placeholder">
-        <div class="placeholder-inner">SCHEDULE</div>
-      </section>
-
-      <section class="panel placeholder">
-        <div class="placeholder-inner">MAP</div>
+      <?php
+        // Load current user's schedules for read-only grid
+        $schedules = [];
+        $sql = "SELECT s.id, s.course_code, s.day_of_week, s.start_time, s.end_time,
+                       b.name AS building_name, r.room_number, r.room_name
+                  FROM schedules s
+             LEFT JOIN rooms r ON r.id = s.room_id
+             LEFT JOIN buildings b ON b.id = r.building_id
+                 WHERE s.faculty_user_id = {$uid}
+              ORDER BY s.day_of_week ASC, s.start_time ASC, s.id ASC";
+        $rs = mysqli_query($conn, $sql);
+        if ($rs) { while ($row = mysqli_fetch_assoc($rs)) { $schedules[] = $row; } }
+        $days = [1=>'Monday',2=>'Tuesday',3=>'Wednesday',4=>'Thursday',5=>'Friday',6=>'Saturday',7=>'Sunday'];
+        $byDay = [1=>[],2=>[],3=>[],4=>[],5=>[],6=>[],7=>[]];
+        foreach ($schedules as $row) { $d=(int)$row['day_of_week']; if(isset($byDay[$d])){ $byDay[$d][] = $row; } }
+      ?>
+      <section class="panel" style="margin-top:14px">
+        <div class="panel-head"><strong>MY SCHEDULE</strong></div>
+        <div class="panel-body" style="overflow:auto">
+          <?php
+            // Build 30-min slot grid 07:00–20:30 (up to 8:30 PM)
+            $slots = [];
+            // Use endHM=20:00 so the last interval generated is 20:00–20:30
+            $startHM = [7,0]; $endHM=[20,0];
+            $h=$startHM[0]; $m=$startHM[1];
+            while($h<$endHM[0] || ($h==$endHM[0] && $m<=$endHM[1])){
+              $nH=$h; $nM=$m+30; if($nM>=60){ $nH++; $nM-=60; }
+              $from = sprintf('%02d:%02d',$h,$m);
+              $to   = sprintf('%02d:%02d',$nH,$nM);
+              $slots[] = [$from,$to];
+              $h=$nH; $m=$nM;
+            }
+            $idx = $byDay;
+          ?>
+          <table class="tt">
+            <colgroup>
+              <col style="width:130px" />
+              <col />
+              <col />
+              <col />
+              <col />
+              <col />
+              <col />
+              <col />
+            </colgroup>
+            <thead>
+              <tr>
+                <th class="time">Time</th>
+                <?php foreach ($days as $dnum=>$dname){ echo '<th>'.$dname.'</th>'; } ?>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($slots as [$from,$to]){ ?>
+                <tr>
+                  <td class="time"><?php echo date('h:i A', strtotime($from)).'-'.date('h:i A', strtotime($to)); ?></td>
+                  <?php foreach ($days as $dnum=>$dname){
+                    $rendered=false;
+                    if (!empty($idx[$dnum])){
+                      foreach ($idx[$dnum] as $k=>$row){
+                        $st=substr($row['start_time'],0,5); $et=substr($row['end_time'],0,5);
+                        if ($st >= $from && $st < $to){
+                          $span = max(1, (int)ceil((strtotime($et)-strtotime($st))/1800));
+                          $title = trim($row['course_code'] ?? '');
+                          $roomDisp = ($row['room_number'] ?: $row['room_name'] ?: '—');
+                          $from12 = date('h:i A', strtotime($st));
+                          $et12   = date('h:i A', strtotime($et));
+                          echo '<td rowspan="'.$span.'">'
+                              .'<div class="slotbox">'
+                              .  ($title !== '' ? '<div class="title">'.htmlspecialchars($title).'</div>' : '')
+                              .  '<div class="meta">'.htmlspecialchars($row['building_name'] ?: '—').'</div>'
+                              .  '<div class="meta">'.htmlspecialchars($roomDisp).'</div>'
+                              .  '<div class="small">'.htmlspecialchars($from12.' - '.$et12).'</div>'
+                              .'</div>'
+                              .'</td>';
+                          $idx[$dnum][$k]['_busy_until'] = $et;
+                          $rendered=true; break;
+                        } elseif (isset($row['_busy_until']) && $from < $row['_busy_until'] && $st < $row['_busy_until']) {
+                          $rendered=true; break;
+                        }
+                      }
+                    }
+                    if (!$rendered) { echo '<td></td>'; }
+                  } ?>
+                </tr>
+              <?php } ?>
+            </tbody>
+          </table>
+        </div>
       </section>
     </main>
   </div>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 30, 2025 at 04:20 PM
+-- Generation Time: Oct 31, 2025 at 12:46 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -106,7 +106,13 @@ INSERT INTO `instructor_logs` (`id`, `faculty_user_id`, `action`, `status`, `roo
 (37, 3, '', 'dnd', 7, NULL, 'manual', '2025-10-30 15:15:20'),
 (38, 3, '', 'available', 7, NULL, 'manual', '2025-10-30 15:16:02'),
 (39, 3, '', 'in class', 7, NULL, 'manual', '2025-10-30 15:19:03'),
-(40, 3, '', 'dnd', 7, NULL, 'manual', '2025-10-30 15:19:28');
+(40, 3, '', 'dnd', 7, NULL, 'manual', '2025-10-30 15:19:28'),
+(41, 3, '', 'meeting', 7, NULL, 'manual', '2025-10-30 15:26:54'),
+(42, 3, 'checkout', 'out', 7, NULL, 'qr', '2025-10-30 15:40:58'),
+(43, 3, 'checkin', 'available', 7, NULL, 'qr', '2025-10-30 15:51:40'),
+(44, 3, '', 'available', 7, NULL, 'manual', '2025-10-30 15:54:24'),
+(45, 3, 'checkout', 'out', 7, NULL, 'qr', '2025-10-30 15:54:37'),
+(46, 3, 'checkin', 'available', 11, NULL, 'qr', '2025-10-30 15:58:07');
 
 -- --------------------------------------------------------
 
@@ -169,7 +175,13 @@ INSERT INTO `presence` (`id`, `faculty_user_id`, `room_id`, `status`, `note`, `s
 (37, 3, 7, 'dnd', NULL, 'manual', NULL, '2025-10-30 15:15:20', '2025-10-30 15:15:20'),
 (38, 3, 7, 'available', NULL, 'manual', NULL, '2025-10-30 15:16:02', '2025-10-30 15:16:02'),
 (39, 3, 7, 'in class', NULL, 'manual', NULL, '2025-10-30 15:19:03', '2025-10-30 15:19:03'),
-(40, 3, 7, 'dnd', NULL, 'manual', NULL, '2025-10-30 15:19:28', '2025-10-30 15:19:28');
+(40, 3, 7, 'dnd', NULL, 'manual', NULL, '2025-10-30 15:19:28', '2025-10-30 15:19:28'),
+(41, 3, 7, 'meeting', NULL, 'manual', NULL, '2025-10-30 15:26:54', '2025-10-30 15:26:54'),
+(42, 3, 7, 'out', NULL, 'qr', NULL, '2025-10-30 15:40:58', '2025-10-30 15:40:58'),
+(43, 3, 7, 'available', NULL, 'qr', NULL, '2025-10-30 15:51:40', '2025-10-30 15:51:40'),
+(44, 3, 7, 'available', NULL, 'manual', NULL, '2025-10-30 15:54:24', '2025-10-30 15:54:24'),
+(45, 3, 7, 'out', NULL, 'qr', NULL, '2025-10-30 15:54:37', '2025-10-30 15:54:37'),
+(46, 3, 11, 'available', NULL, 'qr', NULL, '2025-10-30 15:58:07', '2025-10-30 15:58:07');
 
 -- --------------------------------------------------------
 
@@ -251,7 +263,11 @@ INSERT INTO `room_logs` (`id`, `room_id`, `faculty_user_id`, `action`, `status`,
 (24, 7, 3, 'checkout', NULL, NULL, '2025-10-30 14:46:20'),
 (25, 11, 3, 'checkin', NULL, NULL, '2025-10-30 14:46:28'),
 (26, 11, 3, 'checkout', NULL, NULL, '2025-10-30 14:52:05'),
-(27, 7, 3, 'checkin', NULL, NULL, '2025-10-30 14:52:14');
+(27, 7, 3, 'checkin', NULL, NULL, '2025-10-30 14:52:14'),
+(28, 7, 3, 'checkout', NULL, NULL, '2025-10-30 15:40:58'),
+(29, 7, 3, 'checkin', NULL, NULL, '2025-10-30 15:51:40'),
+(30, 7, 3, 'checkout', NULL, NULL, '2025-10-30 15:54:37'),
+(31, 11, 3, 'checkin', NULL, NULL, '2025-10-30 15:58:07');
 
 -- --------------------------------------------------------
 
@@ -263,6 +279,7 @@ CREATE TABLE `schedules` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `faculty_user_id` bigint(20) UNSIGNED NOT NULL,
   `course_code` varchar(40) DEFAULT NULL,
+  `building_id` bigint(20) UNSIGNED DEFAULT NULL,
   `room_id` bigint(20) UNSIGNED DEFAULT NULL,
   `day_of_week` tinyint(3) UNSIGNED NOT NULL,
   `start_time` time NOT NULL,
@@ -270,6 +287,14 @@ CREATE TABLE `schedules` (
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data for table `schedules`
+--
+
+INSERT INTO `schedules` (`id`, `faculty_user_id`, `course_code`, `building_id`, `room_id`, `day_of_week`, `start_time`, `end_time`, `created_at`, `updated_at`) VALUES
+(4, 3, 'IT 101', 3, 7, 1, '07:00:00', '11:00:00', '2025-10-31 06:49:59', '2025-10-31 06:49:59'),
+(6, 3, 'Amobt', 6, 17, 5, '15:00:00', '19:30:00', '2025-10-31 11:09:31', '2025-10-31 11:09:31');
 
 -- --------------------------------------------------------
 
@@ -376,7 +401,8 @@ ALTER TABLE `room_logs`
 ALTER TABLE `schedules`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_sched_user_day` (`faculty_user_id`,`day_of_week`),
-  ADD KEY `idx_sched_room_day` (`room_id`,`day_of_week`);
+  ADD KEY `idx_sched_room_day` (`room_id`,`day_of_week`),
+  ADD KEY `idx_sched_building_day` (`building_id`,`day_of_week`);
 
 --
 -- Indexes for table `users`
@@ -401,13 +427,13 @@ ALTER TABLE `buildings`
 -- AUTO_INCREMENT for table `instructor_logs`
 --
 ALTER TABLE `instructor_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
 -- AUTO_INCREMENT for table `presence`
 --
 ALTER TABLE `presence`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
 -- AUTO_INCREMENT for table `rooms`
@@ -419,13 +445,13 @@ ALTER TABLE `rooms`
 -- AUTO_INCREMENT for table `room_logs`
 --
 ALTER TABLE `room_logs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
 
 --
 -- AUTO_INCREMENT for table `schedules`
 --
 ALTER TABLE `schedules`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -468,6 +494,7 @@ ALTER TABLE `room_logs`
 -- Constraints for table `schedules`
 --
 ALTER TABLE `schedules`
+  ADD CONSTRAINT `fk_sched_building` FOREIGN KEY (`building_id`) REFERENCES `buildings` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_sched_room` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_sched_user` FOREIGN KEY (`faculty_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;

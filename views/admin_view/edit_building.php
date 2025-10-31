@@ -205,6 +205,7 @@
         <a class="item" href="executives_list.php">EXECUTIVES</a>
         <a class="item" href="instructors_list.php">INSTRUCTORS</a>
         <a class="item" href="buildings.php">BUILDINGS</a>
+        <a class="item" href="manage_schedules.php">SCHEDULES</a>
         <a class="item" href="add_building.php">ADD BUILDING</a>
         <a class="item" href="staff_list.php">STAFF</a>
         <a class="item" href="logs.php">LOGS</a>
@@ -213,6 +214,9 @@
     </aside>
 
     <main class="content">
+      <div class="row" style="align-items:flex-start;margin:6px 0 10px;gap:0;flex-direction:column">
+        <a class="btn ghost" href="buildings.php?bid=<?php echo (int)$bid; ?>">← Back</a>
+      </div>
       <section class="form-section">
         <div class="form-head">
           <h3>BUILDING DETAILS</h3>
