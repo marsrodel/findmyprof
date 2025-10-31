@@ -20,21 +20,7 @@
     $password = trim($_POST['password'] ?? '');
     $department = trim($_POST['department'] ?? '');
 
-    // optional PDF upload (same as admin pages)
-    $pdf_ok = true;
-    if (isset($_FILES['schedule']) && $_FILES['schedule']['error'] === UPLOAD_ERR_OK) {
-      $type = mime_content_type($_FILES['schedule']['tmp_name']);
-      $ext = strtolower(pathinfo($_FILES['schedule']['name'], PATHINFO_EXTENSION));
-      if ($type !== 'application/pdf' || $ext !== 'pdf') { $pdf_ok = false; }
-      else {
-        $dir = dirname(__DIR__, 2) . '/public/schedules';
-        if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
-        $fname = time() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/','_', $_FILES['schedule']['name']);
-        @move_uploaded_file($_FILES['schedule']['tmp_name'], $dir . '/' . $fname);
-      }
-    }
-
-    if ($name !== '' && $email !== '' && $pdf_ok) {
+    if ($name !== '' && $email !== '') {
       if ($password !== '') {
         $hash = password_hash($password, PASSWORD_BCRYPT);
         $stmt = mysqli_prepare($conn, "UPDATE users SET name=?, email=?, password=?, department=?, contact=? WHERE id=?");
@@ -53,7 +39,7 @@
       }
       if (isset($stmt)) { mysqli_stmt_close($stmt); }
     } else {
-      $msg = 'Please fill name and email. Only PDF is allowed.';
+      $msg = 'Please fill name and email.';
     }
   }
 ?>
@@ -83,6 +69,7 @@
       <nav class="menu">
         <a class="item" href="faculty_dashboard.php">DASHBOARD</a>
         <a class="item" href="faculty_search.php">SEARCH</a>
+        <a class="item" href="faculty_schedule.php">SCHEDULE</a>
         <a class="item active" href="faculty_profile.php">PROFILE</a>
         <a class="item" href="faculty_logs.php">LOGS</a>
       </nav>
@@ -129,10 +116,9 @@
                   <option value="DLHS" <?php echo ($dept==='DLHS'?'selected':''); ?>>DLHS</option>
                 </select>
               </label>
-              <label>
-                <span class="label">UPLOAD SCHEDULE (PDF)</span>
-                <input type="file" name="schedule" accept="application/pdf" />
-              </label>
+              <div class="help" style="grid-column:1/-1;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:8px">
+                To manage your schedule (upload PDF, scan, or edit manually), go to <a href="faculty_schedule.php">My Schedule</a>.
+              </div>
             </div>
             <div class="profile-actions">
               <button class="btn primary" type="submit">SAVE INSTRUCTOR DETAILS</button>

@@ -11,19 +11,6 @@
   $msg = '';
   if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_once('../../server/db.php');
-    // handle PDF upload (optional)
-    $pdf_ok = true;
-    if (isset($_FILES['schedule']) && $_FILES['schedule']['error'] === UPLOAD_ERR_OK) {
-      $type = mime_content_type($_FILES['schedule']['tmp_name']);
-      $ext = strtolower(pathinfo($_FILES['schedule']['name'], PATHINFO_EXTENSION));
-      if ($type !== 'application/pdf' || $ext !== 'pdf') { $pdf_ok = false; }
-      else {
-        $dir = dirname(__DIR__, 2) . '/public/schedules';
-        if (!is_dir($dir)) { @mkdir($dir, 0777, true); }
-        $fname = time() . '_' . preg_replace('/[^a-zA-Z0-9_.-]/','_', $_FILES['schedule']['name']);
-        @move_uploaded_file($_FILES['schedule']['tmp_name'], $dir . '/' . $fname);
-      }
-    }
     $name = trim($_POST['full_name'] ?? '');
     $contact = trim($_POST['contact'] ?? '');
     $email = trim($_POST['email'] ?? '');
@@ -33,7 +20,7 @@
     $allowed_roles = ['Admin','Executive','Instructor'];
     if (!in_array($role, $allowed_roles)) { $role = 'Instructor'; }
 
-    if ($name !== '' && $email !== '' && $password !== '' && $pdf_ok) {
+    if ($name !== '' && $email !== '' && $password !== '') {
       $hash = password_hash($password, PASSWORD_BCRYPT);
       $stmt = mysqli_prepare($conn, "INSERT INTO users(name,email,password,role,department,contact) VALUES(?,?,?,?,?,?)");
       mysqli_stmt_bind_param($stmt, 'ssssss', $name, $email, $hash, $role, $department, $contact);
@@ -44,7 +31,7 @@
       }
       mysqli_stmt_close($stmt);
     } else {
-      $msg = 'Please fill name, email and password. Only PDF is allowed.';
+      $msg = 'Please fill name, email and password.';
     }
   }
 ?>
@@ -137,19 +124,14 @@
 
       <section class="form-section">
         <div class="form-head">
-          <h3>SCHEDULE DETAILS</h3>
+          <h3>CREATE ACCOUNT</h3>
         </div>
         <div class="form-body">
-          <div class="field">
-            <label>
-              <span class="label">PDF FILE</span>
-              <input type="file" name="schedule" accept="application/pdf" />
-            </label>
-          </div>
           <div class="form-actions">
-            <span class="muted-note">This form saves a faculty user account.</span>
+            <span class="muted-note">This form creates a faculty user account.</span>
             <button class="btn primary" type="submit">CREATE PERSONEL ACCOUNT</button>
           </div>
+          <div class="note" style="margin-top:8px">To upload or edit schedules, instruct users to open <strong>Faculty → Schedule</strong>.</div>
         </div>
       </section>
       </form>

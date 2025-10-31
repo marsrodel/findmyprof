@@ -94,6 +94,7 @@
       <nav class="menu">
         <a class="item" href="faculty_dashboard.php">DASHBOARD</a>
         <a class="item active" href="faculty_search.php">SEARCH</a>
+        <a class="item" href="faculty_schedule.php">SCHEDULE</a>
         <a class="item" href="faculty_profile.php">PROFILE</a>
         <a class="item" href="faculty_logs.php">LOGS</a>
       </nav>
